@@ -259,44 +259,63 @@ with col4:
 st.subheader("📋 KPI Table")
 st.dataframe(chart_df, use_container_width=True)
 
-# ---------------- CHATBOT OPSI ----------------
-st.markdown("## 🤖 Meet **Opsi** – Your Operational Copilot")
+# ---------------- AI CHATBOT SECTION ----------------
+import textwrap
 
+st.markdown("## 👋✨ Meet Opsi — Your Smart Operations Assistant")
+
+# Load and prepare a clean full version of the dataset (used only by chatbot)
+file_id = "1mkVXQ_ZQsIXYnh72ysfqo-c2wyMZ7I_1"
+file_url = f"https://drive.google.com/uc?export=download&id={file_id}"
 raw_df = pd.read_csv(file_url, dayfirst=True, parse_dates=["Start Date", "End Date", "Target Date"])
-deep_dive_insights_full = analyze_wip_spikes(kpi_df, raw_df)
 
-user_question = st.text_input("Ask anything about performance trends:", key="chatbox")
-
-if user_question:
-    with st.spinner("Opsi is thinking..."):
-        from openai import error  # ✅ Fix: import error handling
-
-        prompt = f"""
-You are Opsi, an AI assistant who helps interpret back-office operational performance data.
-
-Here is structured insight data:
-
-{json.dumps(deep_dive_insights_full, indent=2)}
-
-Now answer this user question:
-'{user_question}'
-
-Respond with clear explanations and key metrics.
+# Summarize dataset for chatbot input
+summary_text = f"""
+📈 Basic Statistics:
+{raw_df.describe(include='all').fillna('-').to_string()}
 """
+
+# Input box for user query
+user_question = st.text_input("", placeholder="e.g. What’s the average pend rate in Jan?", key="chat_input")
+
+# Enable Enter key to trigger submission
+if user_question:
+    with st.spinner("Analyzing your question..."):
+        from openai import OpenAI
+        client = OpenAI(api_key=st.secrets["openai_key"])
+
+        prompt = textwrap.dedent(f"""
+        You are **Opsi**, an expert in operational analytics and performance reporting.
+
+        You will be given:
+        1. A high-level summary of operational data (key statistics and patterns)
+        2. A user's analytical question about trends, performance, or root causes.
+
+        Your job:
+        - Answer concisely and insightfully using **actual metrics** (e.g. WIP, pend rate, SLA %)
+        - Provide **clear explanations**, ideally in **bullet points**
+        - Highlight **notable patterns** (spikes, declines, exceptions) and **root causes**
+        - Be accurate, data-driven, and use **simple language** for non-technical users
+
+        --- DATA SUMMARY ---
+        {summary_text}
+
+        --- USER QUESTION ---
+        {user_question}
+
+        Answer:
+        """)
+
         try:
-            client = OpenAI(api_key=st.secrets["openai_key"])
             response = client.chat.completions.create(
-                model="gpt-3.5-turbo",  # ✅ Use GPT-3.5 to avoid rate limit issues
+                model="gpt-4",  # or "gpt-3.5-turbo"
                 messages=[
-                    {"role": "system", "content": "You're a smart AI assistant."},
+                    {"role": "system", "content": "You are a helpful analyst trained in data storytelling."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.5
             )
             reply = response.choices[0].message.content
             st.markdown(reply)
-
-        except error.RateLimitError:
-            st.error("⚠️ OpenAI rate limit exceeded. Please wait a minute and try again.")
         except Exception as e:
-            st.error(f"❌ Unexpected error: {e}")
+            st.error(f"❌ Error: {e}")
