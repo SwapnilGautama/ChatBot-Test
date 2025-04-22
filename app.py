@@ -266,8 +266,11 @@ raw_df = pd.read_csv(file_url, dayfirst=True, parse_dates=["Start Date", "End Da
 deep_dive_insights_full = analyze_wip_spikes(kpi_df, raw_df)
 
 user_question = st.text_input("Ask anything about performance trends:", key="chatbox")
+
 if user_question:
     with st.spinner("Opsi is thinking..."):
+        from openai import error  # ✅ Fix: import error handling
+
         prompt = f"""
 You are Opsi, an AI assistant who helps interpret back-office operational performance data.
 
@@ -280,19 +283,20 @@ Now answer this user question:
 
 Respond with clear explanations and key metrics.
 """
-try:
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",  # ✅ Use GPT-3.5 to avoid rate limit issues
-        messages=[
-            {"role": "system", "content": "You're a smart AI assistant."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.5
-    )
-    reply = response.choices[0].message.content
-    st.markdown(reply)
+        try:
+            client = OpenAI(api_key=st.secrets["openai_key"])
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",  # ✅ Use GPT-3.5 to avoid rate limit issues
+                messages=[
+                    {"role": "system", "content": "You're a smart AI assistant."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.5
+            )
+            reply = response.choices[0].message.content
+            st.markdown(reply)
 
-except openai.RateLimitError:
-    st.error("⚠️ OpenAI rate limit exceeded. Please wait a minute and try again.")
-except Exception as e:
-    st.error(f"❌ Unexpected error: {e}")
+        except error.RateLimitError:
+            st.error("⚠️ OpenAI rate limit exceeded. Please wait a minute and try again.")
+        except Exception as e:
+            st.error(f"❌ Unexpected error: {e}")
