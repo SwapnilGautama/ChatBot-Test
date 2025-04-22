@@ -1,6 +1,6 @@
 streamlit
 openai
 pandas
-plotly
+plotly==5.19.0
 tabulate
 faiss-cpu
