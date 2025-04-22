@@ -192,21 +192,38 @@ if st.button("Generate Insights with GPT"):
             reasons = ', '.join(list(item["top_pend_reasons"].keys())[:2])  # Top 2 reasons
             insight_summary += f"🔹 On {item['date']}, Closing WIP was {item['closing_wip']}, Pend Rate: {item['pend_rate']}, Reasons: {reasons}\n"
 
-        story_prompt = f"""
-You are a senior operations analyst with deep expertise in back-office performance analysis.
+# 🔁 Replace previous story_prompt with this updated version
+story_prompt = f"""
+You are a senior operations performance analyst.
 
-Below is a summary of recent WIP patterns and performance indicators:
+Below is a summary of operational performance, focused on a filtered period selected by the user.
 
-{insight_summary}
+📊 **Performance Summary**:
 
-Please return exactly **5 bullet points** that:
-- Are sharp and 1–2 lines each
-- Contain relevant metrics (e.g. % pend rate, volumes)
-- Highlight trends, issues, and root causes
-- Use markdown emphasis (**bold**, emojis like 📉📈🛠️)
+- Average SLA Compliance:
+    • Completed within SLA: **{sla_summary['Avg Complete SLA %']}**
+    • WIP in SLA: **{sla_summary['Avg WIP SLA %']}**
+
+- 📈 Average WIP Days: **{avg_wip_days}**
+
+- 📉 Weekly WIP Trend:
+{weekly_trend.tail(4).to_string(index=False)}
+
+- ❗ Spike Days (top 3):
+{"".join([f"• {item['date']}: WIP={item['closing_wip']}, Pend={item['pend_rate']}, Reasons={', '.join(list(item['top_pend_reasons'].keys())[:2])}\n" for item in deep_dive_insights[:3]])}
+
+- 🔍 Top Pend Reasons:
+{json.dumps(pend_reason_summary, indent=2)}
+
+
+🧠 Now generate **5 operational insights** that are:
+- Clear, sharp, and max 2 lines
+- Use real metrics
+- Highlight issues, patterns, and possible root causes
+- Use markdown emphasis (**bold**, bullet points, and emojis like 📈📉🛠️)
 
 Format:
-- 📌 **[Bold Insight]** – short explanation + number(s)
+- 📌 **[Insight Title]** – explanation with data point(s)
 """
 
         try:
