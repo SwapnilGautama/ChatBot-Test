@@ -271,14 +271,18 @@ Now answer this user question:
 Respond with clear explanations and key metrics.
 """
         try:
-            response = client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are a helpful analytics assistant named Opsi."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.5
-            )
-            st.markdown(response.choices[0].message.content)
-        except Exception as e:
-            st.error(f"❌ Error: {e}")
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",  # ✅ Use 3.5 if 4 is hitting limits
+        messages=[
+            {"role": "system", "content": "You're a smart AI assistant."},
+            {"role": "user", "content": user_prompt}
+        ],
+        temperature=0.5
+    )
+    reply = response.choices[0].message.content
+    st.markdown(reply)
+
+except openai.RateLimitError:
+    st.error("⚠️ OpenAI rate limit exceeded. Please try again in 1-2 minutes.")
+except Exception as e:
+    st.error(f"❌ Unexpected error: {e}")
