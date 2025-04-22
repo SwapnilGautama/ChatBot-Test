@@ -150,21 +150,20 @@ def analyze_wip_spikes(df_kpi, raw_df):
 
     return analysis
 
-# ---------------- AI INSIGHTS ----------------
+# ---------------- AI INSIGHTS SECTION ----------------
 st.subheader("🧠 AI-Generated Insights")
 
-if st.button("Generate Insights with GPT", key="ai_insights_button"):
+if st.button("Generate Insights with GPT"):
     with st.spinner("Analyzing and generating insights..."):
-        insights = analyze_wip_spikes(kpi_df, filtered_df)
-        client = OpenAI(api_key=st.secrets["openai_key"])
+        deep_dive_insights = analyze_wip_spikes(kpi_df, filtered_df)
 
-# ✂️ Summarize insights into readable bullet strings
-insight_summary = ""
-for item in deep_dive_insights[:10]:  # You can increase/decrease as needed
-    reasons = ', '.join(list(item["top_pend_reasons"].keys())[:2])  # Top 2 reasons
-    insight_summary += f"🔹 On {item['date']}, Closing WIP was {item['closing_wip']}, Pend Rate: {item['pend_rate']}, Reasons: {reasons}\n"
-        
-story_prompt = f"""
+        # ✅ Summarize for GPT (token-efficient)
+        insight_summary = ""
+        for item in deep_dive_insights[:10]:  # Limit to top 10 for brevity
+            reasons = ', '.join(list(item["top_pend_reasons"].keys())[:2])  # Top 2 reasons
+            insight_summary += f"🔹 On {item['date']}, Closing WIP was {item['closing_wip']}, Pend Rate: {item['pend_rate']}, Reasons: {reasons}\n"
+
+        story_prompt = f"""
 You are a senior operations analyst with deep expertise in back-office performance analysis.
 
 Below is a summary of recent WIP patterns and performance indicators:
@@ -181,16 +180,21 @@ Format:
 - 📌 **[Bold Insight]** – short explanation + number(s)
 """
 
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You are an expert in operations analysis."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.5
-        )
-        st.markdown(response.choices[0].message.content)
-
+        try:
+            client = OpenAI(api_key=st.secrets["openai_key"])
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are an expert in operations analysis."},
+                    {"role": "user", "content": story_prompt}
+                ],
+                temperature=0.5
+            )
+            gpt_bullets = response.choices[0].message.content
+            st.markdown(gpt_bullets)
+        except Exception as e:
+            st.error(f"❌ Error: {e}")
+            
 # ---------------- CHARTS ----------------
 st.markdown("## 📈 Operational Trends")
 
