@@ -238,7 +238,7 @@ try:
             )
             gpt_bullets = response.choices[0].message.content
             st.markdown(gpt_bullets)
-        except Exception as e:
+ except Exception as e:
             st.error(f"❌ Error: {e}")      
             
 # ---------------- CHARTS ----------------
