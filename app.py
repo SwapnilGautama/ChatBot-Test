@@ -183,14 +183,12 @@ for factor in factors:
 st.subheader("🧠 AI-Generated Insights")
 
 if st.button("Generate Insights with GPT"):
-# ⏳ Show spinner while working
-with st.spinner("Analyzing and generating insights..."):
+    # ⏳ Show spinner while working
+    with st.spinner("Analyzing and generating insights..."):
 
-    # ✅ Make sure this is defined BEFORE you use it
-    deep_dive_insights = analyze_wip_spikes(kpi_df, filtered_df)
+        deep_dive_insights = analyze_wip_spikes(kpi_df, filtered_df)
 
-    # ✅ Then use it in the prompt
-    story_prompt = f"""
+        story_prompt = f"""
 You are a senior operations performance analyst.
 
 Below is a summary of operational performance, focused on a filtered period selected by the user.
@@ -223,21 +221,21 @@ Format:
 - 📌 **[Insight Title]** – explanation with data point(s)
 """
 
-    try:
-        client = OpenAI(api_key=st.secrets["openai_key"])
-        response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You are an expert in operations analysis."},
-                {"role": "user", "content": story_prompt}
-            ],
-            temperature=0.5
-        )
-        gpt_bullets = response.choices[0].message.content
-        st.markdown(gpt_bullets)
+        try:
+            client = OpenAI(api_key=st.secrets["openai_key"])
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are an expert in operations analysis."},
+                    {"role": "user", "content": story_prompt}
+                ],
+                temperature=0.5
+            )
+            gpt_bullets = response.choices[0].message.content
+            st.markdown(gpt_bullets)
 
-    except Exception as e:
-        st.error(f"❌ Error: {e}")
+        except Exception as e:
+            st.error(f"❌ Error: {e}")
             
 # ---------------- CHARTS ----------------
 st.markdown("## 📈 Operational Trends")
