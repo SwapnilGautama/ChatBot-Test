@@ -226,7 +226,7 @@ Format:
 - 📌 **[Insight Title]** – explanation with data point(s)
 """
 
-        try:
+try:
             client = OpenAI(api_key=st.secrets["openai_key"])
             response = client.chat.completions.create(
                 model="gpt-4",
@@ -239,7 +239,7 @@ Format:
             gpt_bullets = response.choices[0].message.content
             st.markdown(gpt_bullets)
         except Exception as e:
-            st.error(f"❌ Error: {e}")
+            st.error(f"❌ Error: {e}")      
             
 # ---------------- CHARTS ----------------
 st.markdown("## 📈 Operational Trends")
