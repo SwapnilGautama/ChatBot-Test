@@ -270,12 +270,12 @@ Now answer this user question:
 
 Respond with clear explanations and key metrics.
 """
-        try:
+try:
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",  # ✅ Use 3.5 if 4 is hitting limits
+        model="gpt-3.5-turbo",  # ✅ Use GPT-3.5 to avoid rate limit issues
         messages=[
             {"role": "system", "content": "You're a smart AI assistant."},
-            {"role": "user", "content": user_prompt}
+            {"role": "user", "content": prompt}
         ],
         temperature=0.5
     )
@@ -283,6 +283,6 @@ Respond with clear explanations and key metrics.
     st.markdown(reply)
 
 except openai.RateLimitError:
-    st.error("⚠️ OpenAI rate limit exceeded. Please try again in 1-2 minutes.")
+    st.error("⚠️ OpenAI rate limit exceeded. Please wait a minute and try again.")
 except Exception as e:
     st.error(f"❌ Unexpected error: {e}")
