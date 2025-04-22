@@ -59,6 +59,118 @@ if filtered_df.empty:
     st.warning("⚠️ No data matches the selected filters.")
     st.stop()
 
+# ---------------- FULL WIP KPI ENGINE (Filtered) ----------------
+
+# ✅ Add WIP Days column to both full and filtered data
+df["WIP Days"] = (df["End Date"] - df["Start Date"]).dt.days
+df["WIP Days"] = df["WIP Days"].fillna((pd.Timestamp.now() - df["Start Date"]).dt.days).astype(int)
+filtered_df["WIP Days"] = df["WIP Days"]
+
+# ✅ Step 1: Compute KPI summary day by day
+min_date = filtered_df["Start Date"].min()
+max_date = max(
+    filtered_df["Start Date"].max(),
+    filtered_df["End Date"].max(),
+    filtered_df["Target Date"].max()
+)
+date_range = pd.date_range(start=min_date, end=max_date)
+
+kpi_data = []
+pend_rate_values = []
+prev_closing_wip = filtered_df[
+    (filtered_df["End Date"].isna()) & (filtered_df["Start Date"] <= min_date)
+].shape[0]
+
+for report_date in date_range:
+    opening_wip = prev_closing_wip
+    received_today = filtered_df[filtered_df["Start Date"] == report_date]
+    cases_received = received_today.shape[0]
+    complete_today = filtered_df[filtered_df["End Date"] == report_date]
+    cases_complete = complete_today.shape[0]
+    complete_within_sla = complete_today[complete_today["End Date"] < complete_today["Target Date"]].shape[0]
+    complete_within_sla_pct = f"{int(round((complete_within_sla / cases_complete * 100)))}%" if cases_complete > 0 else "0%"
+    backlog_over_sla = filtered_df[
+        (filtered_df["Start Date"] <= report_date) &
+        (filtered_df["End Date"].isna()) &
+        (filtered_df["Target Date"] < report_date)
+    ].shape[0]
+    backlog_pct = f"{int(round((backlog_over_sla / prev_closing_wip * 100)))}%" if prev_closing_wip > 0 else "0%"
+    wip_in_sla = filtered_df[
+        (filtered_df["Start Date"] <= report_date) &
+        (filtered_df["End Date"].isna()) &
+        (filtered_df["Target Date"] >= report_date)
+    ].shape[0]
+    closing_wip = opening_wip + cases_received - cases_complete
+    wip_in_sla_pct = f"{int(round((wip_in_sla / closing_wip * 100)))}%" if closing_wip > 0 else "0%"
+
+    pend_subset = filtered_df[filtered_df["Start Date"] <= report_date]
+    pend_total = pend_subset["Pend Case"].notna().sum()
+    pend_yes = pend_subset[pend_subset["Pend Case"].astype(str).str.lower() == "yes"].shape[0]
+    pend_rate_val = int(round((pend_yes / pend_total * 100))) if pend_total > 0 else 0
+    pend_rate = f"{pend_rate_val}%"
+
+    pend_rate_values.append(pend_rate_val)
+
+    kpi_data.append({
+        "Report Date": report_date.strftime("%d-%b"),
+        "Opening WIP": opening_wip,
+        "Cases Received": cases_received,
+        "Cases Complete": cases_complete,
+        "Closing WIP": closing_wip,
+        "Complete Within SLA": complete_within_sla,
+        "Complete Within SLA %": complete_within_sla_pct,
+        "Backlog - WIP Over SLA": backlog_over_sla,
+        "Backlog %": backlog_pct,
+        "WIP in SLA": wip_in_sla,
+        "WIP in SLA %": wip_in_sla_pct,
+        "Pend Rate": pend_rate
+    })
+
+    prev_closing_wip = closing_wip
+
+# ✅ Final KPI dataframe (filtered)
+kpi_df = pd.DataFrame(kpi_data)
+
+# ---------------- RETURN ANALYSIS FUNCTION ----------------
+
+def analyze_wip_spikes(df_kpi, raw_df):
+    df_kpi["Closing WIP Num"] = df_kpi["Closing WIP"]
+    rolling_avg = df_kpi["Closing WIP Num"].rolling(window=3).mean()
+    df_kpi["WIP Spike"] = df_kpi["Closing WIP Num"] > rolling_avg * 1.2
+
+    spike_days = df_kpi[df_kpi["WIP Spike"] == True]["Report Date"].tolist()
+    analysis = []
+
+    for day in spike_days:
+        day_raw = raw_df[raw_df["Start Date"].dt.strftime("%d-%b") == day]
+        day_kpi = df_kpi[df_kpi["Report Date"] == day]
+
+        pend_total = day_raw["Pend Case"].notna().sum()
+        pend_yes = day_raw[day_raw["Pend Case"].astype(str).str.lower() == "yes"].shape[0]
+        pend_rate = round((pend_yes / pend_total * 100), 1) if pend_total > 0 else 0
+
+        pend_reason_counts = day_raw[day_raw["Pend Case"].astype(str).str.lower() == "yes"] \
+            .groupby("Pend Reason").size().sort_values(ascending=False).to_dict()
+
+        breakdown = {
+            "Portfolio": day_raw["Portfolio"].value_counts().head(3).to_dict(),
+            "Source": day_raw["Source"].value_counts().head(3).to_dict(),
+            "Event Type": day_raw["Event Type"].value_counts().head(3).to_dict(),
+            "Manual/RPA": day_raw["Manual/RPA"].value_counts().head(3).to_dict()
+        }
+
+        analysis.append({
+            "date": day,
+            "closing_wip": int(day_kpi["Closing WIP"].values[0]),
+            "pend_rate": f"{pend_rate}%",
+            "top_pend_reasons": pend_reason_counts,
+            "breakdown": breakdown
+        })
+
+    return analysis
+
+
+
 # ---------------- KPI RE-CALCULATION ----------------
 min_date = filtered_df["Start Date"].min()
 max_date = max(filtered_df["Start Date"].max(), filtered_df["End Date"].max(), filtered_df["Target Date"].max())
@@ -118,10 +230,45 @@ for report_date in date_range:
 # ✅ Use this filtered KPI dataset everywhere now
 kpi_df = pd.DataFrame(kpi_data)
 
-# ---------------- AI Insights Section ----------------
+# ---------------- AI INSIGHTS SECTION ----------------
 st.subheader("🧠 AI-Generated Insights")
 
-# 🔍 WIP Analyzer (used for AI insights)
+if st.button("Generate Insights with GPT"):
+    with st.spinner("Analyzing and generating insights..."):
+        deep_dive_insights = analyze_wip_spikes(kpi_df, filtered_df)  # ✅ Filtered
+
+        client = OpenAI(api_key=st.secrets["openai_key"])
+
+        story_prompt = f"""
+You are a senior operations analyst with deep expertise in back-office performance analysis.
+
+Below is structured data from a recent operational deep dive:
+
+{json.dumps(deep_dive_insights, indent=2)}
+
+Please return exactly **5 bullet points** that:
+- Are sharp and 1–2 lines each
+- Contain relevant metrics (e.g. % pend rate, volumes)
+- Highlight trends, issues, and root causes
+- Use markdown emphasis (**bold**, emojis like 📉📈🛠️)
+
+Format:
+- 📌 **[Bold Insight]** – short explanation + number(s)
+"""
+
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are an expert in operations analysis."},
+                {"role": "user", "content": story_prompt}
+            ],
+            temperature=0.5
+        )
+        gpt_bullets = response.choices[0].message.content
+        st.markdown(gpt_bullets)
+
+# ---------------- RETURN ANALYSIS FUNCTION ----------------
+
 def analyze_wip_spikes(df_kpi, raw_df):
     df_kpi["Closing WIP Num"] = df_kpi["Closing WIP"]
     rolling_avg = df_kpi["Closing WIP Num"].rolling(window=3).mean()
@@ -271,61 +418,45 @@ st.dataframe(chart_df, use_container_width=True)
 # ---------------- AI CHATBOT SECTION ----------------
 import textwrap
 
-st.markdown("## 👋✨ Meet Opsi — Your Smart Operations Assistant")
+st.markdown("## 🤖 Meet **Opsi** – Your Operational Copilot")
 
-# Load and prepare a clean full version of the dataset (used only by chatbot)
-file_id = "1mkVXQ_ZQsIXYnh72ysfqo-c2wyMZ7I_1"
-file_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+# Reload full dataset for chatbot
+file_url = "https://drive.google.com/uc?export=download&id=1mkVXQ_ZQsIXYnh72ysfqo-c2wyMZ7I_1"
 raw_df = pd.read_csv(file_url, dayfirst=True, parse_dates=["Start Date", "End Date", "Target Date"])
 
-# Summarize dataset for chatbot input
-summary_text = f"""
-📊 Dataset Summary:
+# Reuse insights engine on full data
+full_kpi_df = kpi_df.copy()  # If needed, you can recalculate on full df too
+deep_dive_insights_full = analyze_wip_spikes(full_kpi_df, raw_df)
 
-- Rows: {raw_df.shape[0]}
-- Columns: {raw_df.shape[1]}
-- Fields: {', '.join(raw_df.columns)}
+# Simple chat interface
+user_question = st.text_input("Ask anything about performance trends:", key="chatbox")
 
-📈 Basic Statistics:
-{raw_df.describe(include='all').fillna('-').to_string()}
-"""
-
-# Input box for user query
-user_question = st.text_input("", placeholder="e.g. What’s the average pend rate in Jan?", key="chat_input")
-
-# Enable Enter key to trigger submission
 if user_question:
-    with st.spinner("Analyzing your question..."):
+    with st.spinner("Opsi is thinking..."):
         from openai import OpenAI
         client = OpenAI(api_key=st.secrets["openai_key"])
 
-        prompt = textwrap.dedent(f"""
-        You are an expert operational analyst. You will receive:
+        prompt = f"""
+You are Opsi, an AI assistant who helps interpret back-office operational performance data.
 
-        1. A summarized dataset with statistics.
-        2. A user question about the data.
+Here is structured insight data:
 
-        Your task is to respond clearly and concisely based on the data provided. Use bullet points if possible and include actual figures when relevant.
+{json.dumps(deep_dive_insights_full, indent=2)}
 
-        --- DATA SUMMARY ---
-        {summary_text}
+Now answer this user question:
+'{user_question}'
 
-        --- USER QUESTION ---
-        {user_question}
-
-        Answer:
-        """)
-
+Respond with clear explanations and key metrics.
+"""
         try:
             response = client.chat.completions.create(
-                model="gpt-4",  # You can switch to "gpt-3.5-turbo" if needed
+                model="gpt-4",
                 messages=[
-                    {"role": "system", "content": "You are a helpful analyst trained in data storytelling."},
+                    {"role": "system", "content": "You are a helpful analytics assistant named Opsi."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.5
             )
-            reply = response.choices[0].message.content
-            st.markdown(reply)
+            st.markdown(response.choices[0].message.content)
         except Exception as e:
             st.error(f"❌ Error: {e}")
