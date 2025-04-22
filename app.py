@@ -158,12 +158,18 @@ if st.button("Generate Insights with GPT", key="ai_insights_button"):
         insights = analyze_wip_spikes(kpi_df, filtered_df)
         client = OpenAI(api_key=st.secrets["openai_key"])
 
-        prompt = f"""
+# ✂️ Summarize insights into readable bullet strings
+insight_summary = ""
+for item in deep_dive_insights[:10]:  # You can increase/decrease as needed
+    reasons = ', '.join(list(item["top_pend_reasons"].keys())[:2])  # Top 2 reasons
+    insight_summary += f"🔹 On {item['date']}, Closing WIP was {item['closing_wip']}, Pend Rate: {item['pend_rate']}, Reasons: {reasons}\n"
+        
+story_prompt = f"""
 You are a senior operations analyst with deep expertise in back-office performance analysis.
 
-Below is structured data from a recent operational deep dive:
+Below is a summary of recent WIP patterns and performance indicators:
 
-{json.dumps(insights, indent=2)}
+{insight_summary}
 
 Please return exactly **5 bullet points** that:
 - Are sharp and 1–2 lines each
