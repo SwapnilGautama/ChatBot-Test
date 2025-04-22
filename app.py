@@ -113,42 +113,71 @@ for report_date in date_range:
 
 kpi_df = pd.DataFrame(kpi_data)
 
-# ---------------- WIP ANALYSIS FUNCTION ----------------
-def analyze_wip_spikes(df_kpi, raw_df):
-    df_kpi["Closing WIP Num"] = df_kpi["Closing WIP"]
-    rolling_avg = df_kpi["Closing WIP Num"].rolling(window=3).mean()
-    df_kpi["WIP Spike"] = df_kpi["Closing WIP Num"] > rolling_avg * 1.2
+# ---------------- ADVANCED KPI ANALYTICS ENGINE ----------------
 
-    spike_days = df_kpi[df_kpi["WIP Spike"] == True]["Report Date"].tolist()
-    analysis = []
+# 🔹 Trend Frequencies
+kpi_df["Report Date Full"] = pd.date_range(start=min_date, end=max_date)
 
-    for day in spike_days:
-        day_raw = raw_df[raw_df["Start Date"].dt.strftime("%d-%b") == day]
-        day_kpi = df_kpi[df_kpi["Report Date"] == day]
+# Daily WIP Trend (already built into KPI)
+daily_trend = kpi_df[["Report Date Full", "Closing WIP"]]
 
-        pend_total = day_raw["Pend Case"].notna().sum()
-        pend_yes = day_raw[day_raw["Pend Case"].astype(str).str.lower() == "yes"].shape[0]
-        pend_rate = round((pend_yes / pend_total * 100), 1) if pend_total > 0 else 0
+# Weekly WIP Trend
+kpi_df["Week"] = pd.to_datetime(kpi_df["Report Date Full"]).dt.to_period("W").apply(lambda r: r.start_time)
+weekly_trend = kpi_df.groupby("Week")["Closing WIP"].mean().reset_index(name="Avg WIP")
 
-        pend_reason_counts = day_raw[day_raw["Pend Case"].astype(str).str.lower() == "yes"] \
-            .groupby("Pend Reason").size().sort_values(ascending=False).to_dict()
+# Monthly WIP Trend
+kpi_df["Month"] = pd.to_datetime(kpi_df["Report Date Full"]).dt.to_period("M").astype(str)
+monthly_trend = kpi_df.groupby("Month")["Closing WIP"].mean().reset_index(name="Avg WIP")
 
-        breakdown = {
-            "Portfolio": day_raw["Portfolio"].value_counts().head(3).to_dict(),
-            "Source": day_raw["Source"].value_counts().head(3).to_dict(),
-            "Event Type": day_raw["Event Type"].value_counts().head(3).to_dict(),
-            "Manual/RPA": day_raw["Manual/RPA"].value_counts().head(3).to_dict()
-        }
+# Yearly WIP Trend
+kpi_df["Year"] = pd.to_datetime(kpi_df["Report Date Full"]).dt.year
+yearly_trend = kpi_df.groupby("Year")["Closing WIP"].mean().reset_index(name="Avg WIP")
 
-        analysis.append({
-            "date": day,
-            "closing_wip": int(day_kpi["Closing WIP"].values[0]),
-            "pend_rate": f"{pend_rate}%",
-            "top_pend_reasons": pend_reason_counts,
-            "breakdown": breakdown
-        })
 
-    return analysis
+# 🔹 SLA Compliance & Breach
+kpi_df["Complete SLA %"] = kpi_df["Complete Within SLA %"].str.replace("%", "").astype(float)
+kpi_df["WIP SLA %"] = kpi_df["WIP in SLA %"].str.replace("%", "").astype(float)
+
+sla_summary = {
+    "Avg Complete SLA %": f"{int(kpi_df['Complete SLA %'].mean())}%",
+    "Avg WIP SLA %": f"{int(kpi_df['WIP SLA %'].mean())}%"
+}
+
+
+# 🔹 Pend Reasons Distribution (filtered only)
+if "Pend Reason" in filtered_df.columns:
+    pend_reason_summary = filtered_df["Pend Reason"].value_counts().head(10).to_dict()
+else:
+    pend_reason_summary = {}
+
+
+# 🔹 WIP Days Analysis
+avg_wip_days = int(df["WIP Days"].mean())
+wip_days_trend = df.groupby(df["Start Date"].dt.to_period("W").apply(lambda r: r.start_time))["WIP Days"].mean().reset_index()
+wip_days_trend.rename(columns={"WIP Days": "Avg WIP Days"}, inplace=True)
+
+# Outliers in WIP Days
+wip_days_q3 = df["WIP Days"].quantile(0.75)
+wip_days_outliers = df[df["WIP Days"] > wip_days_q3 + 1.5 * (wip_days_q3 - df["WIP Days"].quantile(0.25))]
+
+
+# 🔹 Breakdown by Factors
+factors = [
+    "Portfolio", "Source", "Location", "Event Type", "Process Name",
+    "Onshore/Offshore", "Manual/RPA", "Critical", "Vulnerable Customer", "Data Type"
+]
+
+breakdown_summary = {}
+
+for factor in factors:
+    if factor in df.columns:
+        grouped = df.groupby(factor).agg({
+            "WIP Days": "mean",
+            "Pend Case": lambda x: (x.astype(str).str.lower() == "yes").sum(),
+            "Start Date": "count"
+        }).rename(columns={"Start Date": "Total Cases"})
+        grouped["Avg WIP Days"] = grouped["WIP Days"].round(1)
+        breakdown_summary[factor] = grouped[["Avg WIP Days", "Total Cases", "Pend Case"]].sort_values(by="Avg WIP Days", ascending=False)
 
 # ---------------- AI INSIGHTS SECTION ----------------
 st.subheader("🧠 AI-Generated Insights")
