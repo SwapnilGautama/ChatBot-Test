@@ -306,8 +306,14 @@ st.dataframe(chart_df, use_container_width=True)
 # ---------------- AI CHATBOT SECTION ----------------
 st.markdown("## 🤖 Meet **Opsi** – Your Operational Copilot")
 
-# Load raw full data for chatbot analysis
-raw_df = pd.read_csv(file_url, dayfirst=True, parse_dates=["Start Date", "End Date", "Target Date"])
+# ✅ Load the same CSV used for the dashboard from GitHub
+raw_url = "https://raw.githubusercontent.com/SwapnilGautama/AI-Insights-Dashboard/refs/heads/main/operational_data_full_jan_to_mar_2025.csv"
+
+try:
+    raw_df = pd.read_csv(raw_url, dayfirst=True, parse_dates=["Start Date", "End Date", "Target Date"])
+except Exception as e:
+    st.error(f"❌ Failed to load data for chatbot (Opsi).\n\n**Error:** `{e}`")
+    st.stop()
 
 # Use your WIP spike analyzer for full data
 deep_dive_insights_full = analyze_wip_spikes(kpi_df, raw_df)
