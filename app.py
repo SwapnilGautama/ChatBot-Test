@@ -304,7 +304,7 @@ st.subheader("📋 KPI Table")
 st.dataframe(chart_df, use_container_width=True)
 
 # ---------------- AI CHATBOT SECTION ----------------
-st.markdown("## 🤖 Meet **Opsi** – Your Operational Copilot")
+st.markdown("## 🤖 Meet **Opsi** – Your Analyst Copilot")
 
 # ✅ Load the same CSV used for the dashboard from GitHub
 raw_url = "https://raw.githubusercontent.com/SwapnilGautama/AI-Insights-Dashboard/refs/heads/main/operational_data_full_jan_to_mar_2025.csv"
