@@ -190,37 +190,46 @@ if st.button("Generate Insights with GPT"):
 
         deep_dive_insights = analyze_wip_spikes(kpi_df, filtered_df)
 
-        story_prompt = f"""
-You are a senior operations performance analyst.
+story_prompt = f"""
+You are a senior operations analyst trusted with providing high-quality, data-backed performance insights.
 
-Below is a summary of operational performance, focused on a filtered period selected by the user.
+Below is a filtered performance snapshot, based on the user's selected week and filters. Use this to identify trends, exceptions, patterns, and root causes.
 
 📊 **Performance Summary**:
 
-- Average SLA Compliance:
+- **SLA Compliance**
     • Completed within SLA: **{sla_summary['Avg Complete SLA %']}**
     • WIP in SLA: **{sla_summary['Avg WIP SLA %']}**
 
-- 📈 Average WIP Days: **{avg_wip_days}**
+- **WIP Days**
+    • Average WIP Days: **{avg_wip_days}**
+    • WIP Outliers: {len(wip_days_outliers)} rows exceeded upper bound
 
-- 📉 Weekly WIP Trend:
+- **WIP Weekly Trend (last 4 weeks)**:
 {weekly_trend.tail(4).to_string(index=False)}
 
-- ❗ Spike Days (top 3):
-{"".join([f"• {item['date']}: WIP={item['closing_wip']}, Pend={item['pend_rate']}, Reasons={', '.join(list(item['top_pend_reasons'].keys())[:2])}\n" for item in deep_dive_insights[:3]])}
+- **Monthly Trend**:
+{monthly_trend.tail(2).to_string(index=False)}
 
-- 🔍 Top Pend Reasons:
+- **Top 3 Spike Days**:
+{"".join([
+    f"• {item['date']} – WIP: {item['closing_wip']}, Pend Rate: {item['pend_rate']}, Top Reasons: {', '.join(list(item['top_pend_reasons'].keys())[:2])}\n"
+    for item in deep_dive_insights[:3]
+])}
+
+- **Top Pend Reasons**:
 {json.dumps(pend_reason_summary, indent=2)}
 
+Now generate **5 strategic insights** that are:
+- Actionable and rooted in the data
+- 1–2 lines each
+- Use actual metrics (%, volumes, comparisons)
+- Point out unusual changes or bottlenecks
+- Highlight trends vs. previous period if visible
+- Use markdown emphasis (bold, bullet points, emojis like 📈📉✅🛠️)
 
-🧠 Now generate **5 operational insights** that are:
-- Clear, sharp, and max 2 lines
-- Use real metrics
-- Highlight issues, patterns, and possible root causes
-- Use markdown emphasis (**bold**, bullet points, and emojis like 📈📉🛠️)
-
-Format:
-- 📌 **[Insight Title]** – explanation with data point(s)
+📌 Format:
+- 📌 **[Insight Title]** – supporting metric(s) and explanation.
 """
 
         try:
@@ -310,6 +319,8 @@ def analyze_wip_spikes(df_kpi, raw_df):
     df_kpi["WIP Spike"] = df_kpi["Closing WIP Num"] > rolling_avg * 1.2
 
     spike_days = df_kpi[df_kpi["WIP Spike"] == True]["Report Date"].tolist()
+    prev_avg_wip = df_kpi["Closing WIP Num"].shift(1).rolling(window=5).mean()
+
     analysis = []
 
     for day in spike_days:
@@ -330,12 +341,16 @@ def analyze_wip_spikes(df_kpi, raw_df):
             "Manual/RPA": day_raw["Manual/RPA"].value_counts().head(3).to_dict()
         }
 
+        closing_wip = int(day_kpi["Closing WIP"].values[0])
+        avg_prev = int(prev_avg_wip[day_kpi.index[0]]) if not pd.isna(prev_avg_wip[day_kpi.index[0]]) else None
+
         analysis.append({
             "date": day,
-            "closing_wip": int(day_kpi["Closing WIP"].values[0]),
+            "closing_wip": closing_wip,
             "pend_rate": f"{pend_rate}%",
             "top_pend_reasons": pend_reason_counts,
-            "breakdown": breakdown
+            "breakdown": breakdown,
+            "vs_prev_avg": f"{closing_wip - avg_prev}" if avg_prev else "N/A"
         })
 
     return analysis
