@@ -180,6 +180,43 @@ for factor in factors:
         }).rename(columns={"Start Date": "Total Cases"})
         grouped["Avg WIP Days"] = grouped["WIP Days"].round(1)
         breakdown_summary[factor] = grouped[["Avg WIP Days", "Total Cases", "Pend Case"]].sort_values(by="Avg WIP Days", ascending=False)
+        
+# ---------------- WIP SPIKE ANALYZER FUNCTION ----------------
+def analyze_wip_spikes(df_kpi, raw_df):
+    df_kpi["Closing WIP Num"] = df_kpi["Closing WIP"]
+    rolling_avg = df_kpi["Closing WIP Num"].rolling(window=3).mean()
+    df_kpi["WIP Spike"] = df_kpi["Closing WIP Num"] > rolling_avg * 1.2
+
+    spike_days = df_kpi[df_kpi["WIP Spike"] == True]["Report Date"].tolist()
+    analysis = []
+
+    for day in spike_days:
+        day_raw = raw_df[raw_df["Start Date"].dt.strftime("%d-%b") == day]
+        day_kpi = df_kpi[df_kpi["Report Date"] == day]
+
+        pend_total = day_raw["Pend Case"].notna().sum()
+        pend_yes = day_raw[day_raw["Pend Case"].astype(str).str.lower() == "yes"].shape[0]
+        pend_rate = round((pend_yes / pend_total * 100), 1) if pend_total > 0 else 0
+
+        pend_reason_counts = day_raw[day_raw["Pend Case"].astype(str).str.lower() == "yes"] \
+            .groupby("Pend Reason").size().sort_values(ascending=False).to_dict()
+
+        breakdown = {
+            "Portfolio": day_raw["Portfolio"].value_counts().head(3).to_dict(),
+            "Source": day_raw["Source"].value_counts().head(3).to_dict(),
+            "Event Type": day_raw["Event Type"].value_counts().head(3).to_dict(),
+            "Manual/RPA": day_raw["Manual/RPA"].value_counts().head(3).to_dict()
+        }
+
+        analysis.append({
+            "date": day,
+            "closing_wip": int(day_kpi["Closing WIP"].values[0]),
+            "pend_rate": f"{pend_rate}%",
+            "top_pend_reasons": pend_reason_counts,
+            "breakdown": breakdown
+        })
+
+    return analysis
 
 # ---------------- AI INSIGHTS SECTION ----------------
 st.subheader("🧠 AI-Generated Insights")
