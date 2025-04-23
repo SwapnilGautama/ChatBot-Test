@@ -190,7 +190,7 @@ if st.button("Generate Insights with GPT"):
 
         deep_dive_insights = analyze_wip_spikes(kpi_df, filtered_df)
 
-story_prompt = f"""
+        story_prompt = f"""
 You are a senior operations analyst trusted with providing high-quality, data-backed performance insights.
 
 Below is a filtered performance snapshot, based on the user's selected week and filters. Use this to identify trends, exceptions, patterns, and root causes.
