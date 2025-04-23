@@ -4,3 +4,4 @@ pandas
 plotly==5.19.0
 tabulate
 faiss-cpu
+gdown==4.7.1
