@@ -433,6 +433,9 @@ if user_question:
             - Provide **clear explanations**, ideally in **bullet points**
             - Highlight **notable patterns** (spikes, declines, exceptions) and **root causes**
             - Be accurate, data-driven, and use **simple language** for non-technical users
+            - Avoid **generic or vague statements**
+            - Only output **data-supported insights**
+            - Never **repeat the summary directly** — synthesize it into observations
 
             --- DATA SUMMARY ---
             {summary_text}
@@ -444,7 +447,7 @@ if user_question:
             """)
 
             response = client.chat.completions.create(
-                model="gpt-4",  # or "gpt-3.5-turbo" if preferred
+                model="gpt-4-turbo",  # or "gpt-3.5-turbo" if preferred
                 messages=[
                     {"role": "system", "content": "You are a helpful analytics assistant named Opsi."},
                     {"role": "user", "content": prompt}
