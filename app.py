@@ -518,6 +518,10 @@ raw_url = "https://raw.githubusercontent.com/SwapnilGautama/AI-Insights-Dashboar
 
 try:
     raw_df = pd.read_csv(raw_url, dayfirst=True, parse_dates=["Start Date", "End Date", "Target Date"])
+    raw_df = pd.read_csv(raw_url, dayfirst=True, parse_dates=["Start Date", "End Date", "Target Date"])
+    raw_df["WIP Days"] = (raw_df["End Date"] - raw_df["Start Date"]).dt.days
+    raw_df["WIP Days"] = raw_df["WIP Days"].fillna((pd.Timestamp.now() - raw_df["Start Date"]).dt.days).astype(int)
+
 except Exception as e:
     st.error(f"❌ Failed to load data for chatbot (Opsi).\n\n**Error:** `{e}`")
     st.stop()
