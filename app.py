@@ -180,7 +180,59 @@ for factor in factors:
         }).rename(columns={"Start Date": "Total Cases"})
         grouped["Avg WIP Days"] = grouped["WIP Days"].round(1)
         breakdown_summary[factor] = grouped[["Avg WIP Days", "Total Cases", "Pend Case"]].sort_values(by="Avg WIP Days", ascending=False)
-        
+
+# 🔹 Monthly KPI Summary for Chatbot Reference
+monthly_kpis = df.copy()
+monthly_kpis["Month"] = pd.to_datetime(monthly_kpis["Start Date"]).dt.to_period("M").astype(str)
+monthly_wip_summary = (
+    monthly_kpis.groupby("Month")
+    .agg({
+        "WIP Days": "mean",
+        "Start Date": "count",
+        "Pend Case": lambda x: (x.astype(str).str.lower() == "yes").sum()
+    })
+    .rename(columns={"Start Date": "Total Cases", "Pend Case": "Total Pends"})
+    .round(1)
+    .to_dict("index")
+)
+
+# 🔹 Daily, Weekly, Monthly KPI Summary for Chatbot
+
+# Add parsed day/week/month labels
+df["Date"] = pd.to_datetime(df["Start Date"])
+df["Week"] = df["Date"].dt.to_period("W").apply(lambda r: r.start_time)
+df["Month"] = df["Date"].dt.to_period("M").astype(str)
+
+# Build KPI-level summaries from your existing `kpi_df`
+def parse_pct(val):
+    return int(val.replace('%', '')) if isinstance(val, str) and '%' in val else 0
+
+kpi_df["Complete SLA % Num"] = kpi_df["Complete Within SLA %"].apply(parse_pct)
+kpi_df["WIP SLA % Num"] = kpi_df["WIP in SLA %"].apply(parse_pct)
+kpi_df["Pend Rate Num"] = kpi_df["Pend Rate"].apply(parse_pct)
+
+# DAILY
+daily_kpi_summary = kpi_df.set_index("Report Date").to_dict("index")
+
+# WEEKLY
+kpi_df["Week"] = pd.to_datetime(kpi_df["Report Date Full"]).dt.to_period("W").apply(lambda r: r.start_time)
+weekly_kpi_summary = (
+    kpi_df.groupby("Week")[["Opening WIP", "Cases Received", "Cases Complete", "Closing WIP",
+                            "Complete SLA % Num", "WIP SLA % Num", "Pend Rate Num"]]
+    .mean()
+    .round(1)
+    .to_dict("index")
+)
+
+# MONTHLY
+kpi_df["Month"] = pd.to_datetime(kpi_df["Report Date Full"]).dt.to_period("M").astype(str)
+monthly_kpi_summary = (
+    kpi_df.groupby("Month")[["Opening WIP", "Cases Received", "Cases Complete", "Closing WIP",
+                             "Complete SLA % Num", "WIP SLA % Num", "Pend Rate Num"]]
+    .mean()
+    .round(1)
+    .to_dict("index")
+)
 # ---------------- WIP SPIKE ANALYZER FUNCTION ----------------
 def analyze_wip_spikes(df_kpi, raw_df):
     df_kpi["Closing WIP Num"] = df_kpi["Closing WIP"]
@@ -257,17 +309,27 @@ Below is a filtered performance snapshot, based on the user's selected week and 
 - **Top Pend Reasons**:
 {json.dumps(pend_reason_summary, indent=2)}
 
+- 📅 **Daily KPI Summary**:
+{json.dumps(daily_kpi_summary, indent=2)}
+
+- 📈 **Weekly KPI Summary**:
+{json.dumps(weekly_kpi_summary, indent=2)}
+
+- 📆 **Monthly KPI Summary**:
+{json.dumps(monthly_kpi_summary, indent=2)}
+
 Now generate **5 strategic insights** that are:
 - Actionable and rooted in the data
 - 1–2 lines each
 - Use actual metrics (%, volumes, comparisons)
 - Point out unusual changes or bottlenecks
 - Highlight trends vs. previous period if visible
-- Use markdown emphasis (bold, bullet points, emojis like 📈📉✅🛠️)
+- Use markdown emphasis (bold, bullet points, and emojis like 📈📉✅🛠️)
 
 📌 Format:
 - 📌 **[Insight Title]** – supporting metric(s) and explanation.
 """
+
 
         try:
             client = OpenAI(api_key=st.secrets["openai_key"])
