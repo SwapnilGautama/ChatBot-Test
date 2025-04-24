@@ -634,6 +634,7 @@ if user_question:
     with st.spinner("Opsi is thinking..."):
         try:
             import dateparser
+            from dateparser.search import search_dates
             tokens = user_question.lower().split()
             possible_month = next((word for word in tokens if word.capitalize() in calendar.month_name), None)
 
@@ -641,10 +642,10 @@ if user_question:
                 # Clean fuzzy phrasing for better parsing
                 cleaned_input = (
                     user_question.lower()
-                    .replace("for the week of", "starting")
-                    .replace("the week of", "starting")
-                    .replace("week of", "starting")
-                    .replace("week starting", "starting")
+                    .replace("for the week of", "")
+                    .replace("the week of", "")
+                    .replace("week of", "")
+                    .replace("week starting", "")
                     .replace("wip for", "")
                     .replace("wip", "")
                     .replace("th", "")
@@ -654,7 +655,8 @@ if user_question:
                     .strip()
                 )
 
-                parsed_date = dateparser.parse(cleaned_input, settings={"PREFER_DATES_FROM": "past"})
+                parsed_results = search_dates(cleaned_input, settings={"PREFER_DATES_FROM": "past"})
+                parsed_date = parsed_results[0][1] if parsed_results else None
 
                 if not parsed_date:
                     # Fallback: "1st week of February", "2nd week of March"
@@ -710,7 +712,7 @@ if user_question:
                 """)
 
                 response = client.chat.completions.create(
-                    model="gpt-4-turbo",  # or "gpt-3.5-turbo" if preferred
+                    model="gpt-4-turbo",
                     messages=[
                         {"role": "system", "content": "You are a helpful analytics assistant named Opsi."},
                         {"role": "user", "content": prompt}
