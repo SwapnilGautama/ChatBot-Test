@@ -7,6 +7,32 @@ import plotly.express as px
 from openai import OpenAI
 import textwrap
 
+import streamlit as st
+import pandas as pd
+import json
+from datetime import datetime
+import plotly.graph_objects as go
+import plotly.express as px
+from openai import OpenAI
+import textwrap
+
+# ---------------- JSON SERIALIZATION HELPER ----------------
+def safe_json(obj):
+    import numpy as np
+    import pandas as pd
+
+    def convert(o):
+        if isinstance(o, (np.integer, np.int64)): return int(o)
+        if isinstance(o, (np.floating, np.float64)): return float(o)
+        if isinstance(o, (np.ndarray, list)): return list(o)
+        if isinstance(o, (pd.Timestamp, datetime)): return o.strftime('%Y-%m-%d')
+        if isinstance(o, pd.Period): return str(o)
+        if isinstance(o, dict): return {k: convert(v) for k, v in o.items()}
+        if isinstance(o, (pd.DataFrame, pd.Series)): return o.to_dict()
+        return o
+
+    return json.dumps(convert(obj), indent=2)
+
 # ---------------- PAGE SETUP ----------------
 st.set_page_config(page_title="📊 KPI AI Dashboard", layout="wide")
 st.title("📊 BackOffice Operations Dashboard with AI Insights")
