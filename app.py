@@ -21,7 +21,7 @@ def safe_json(obj):
     import numpy as np
     import pandas as pd
     import json
-    from datetime import datetime
+    from datetime import datetime, date
 
     def convert(o):
         if isinstance(o, (np.integer, np.int64)):
@@ -29,15 +29,15 @@ def safe_json(obj):
         if isinstance(o, (np.floating, np.float64)):
             return float(o)
         if isinstance(o, (np.ndarray, list)):
-            return list(o)
-        if isinstance(o, (pd.Timestamp, datetime)):
+            return [convert(i) for i in o]
+        if isinstance(o, (pd.Timestamp, datetime, date)):
             return o.strftime('%Y-%m-%d')
         if isinstance(o, pd.Period):
             return str(o)
         if isinstance(o, dict):
-            return {k: convert(v) for k, v in o.items()}
+            return {str(k): convert(v) for k, v in o.items()}  # <— ✅ convert keys to str
         if isinstance(o, (pd.DataFrame, pd.Series)):
-            return o.to_dict()
+            return convert(o.to_dict())
         return o
 
     return json.dumps(convert(obj), indent=2, default=str)
