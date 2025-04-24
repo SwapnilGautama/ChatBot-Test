@@ -510,6 +510,64 @@ def generate_prescriptive_response(kpi_df, raw_df, month_name=None, year=2025):
 """
     return response
 
+def generate_weekly_prescriptive_response(kpi_df, raw_df, week_start_date_str):
+    try:
+        week_start = pd.to_datetime(week_start_date_str)
+    except Exception:
+        return f"❌ Invalid date format: `{week_start_date_str}`. Please use YYYY-MM-DD."
+
+    # Define the week's end (Sunday)
+    week_end = week_start + pd.Timedelta(days=6)
+
+    weekly_kpi = kpi_df[
+        (kpi_df["Report Date Full"] >= week_start) &
+        (kpi_df["Report Date Full"] <= week_end)
+    ]
+
+    if weekly_kpi.empty:
+        return f"⚠️ No KPI data found for the week starting {week_start.strftime('%d-%b-%Y')}."
+
+    raw_weekly = raw_df[
+        (raw_df["Start Date"] >= week_start) &
+        (raw_df["Start Date"] <= week_end)
+    ]
+
+    opening_wip = int(weekly_kpi["Opening WIP"].iloc[0])
+    closing_wip = int(weekly_kpi["Closing WIP"].iloc[-1])
+    avg_closing_wip = int(weekly_kpi["Closing WIP"].mean())
+    wip_sla_pct = int(weekly_kpi["WIP SLA % Num"].mean())
+    wip_outside_sla_pct = 100 - wip_sla_pct
+
+    top_sources = raw_weekly["Source"].value_counts().head(3).to_dict()
+    top_events = raw_weekly["Event Type"].value_counts().head(3).to_dict()
+    top_portfolios = raw_weekly["Portfolio"].value_counts().head(3).to_dict()
+    high_wip_records = raw_weekly[raw_weekly["WIP Days"] > raw_weekly["WIP Days"].mean() + 2]
+
+    response = f"""
+### 📊 WIP Analysis for Week: **{week_start.strftime('%d %b %Y')} to {week_end.strftime('%d %b %Y')}**
+
+- **Opening WIP**: {opening_wip}
+- **Closing WIP**: {closing_wip}
+- **Average WIP (closing)**: {avg_closing_wip}
+- ✅ **WIP in SLA**: {wip_sla_pct}%
+- ❗ **WIP outside SLA**: {wip_outside_sla_pct}%
+
+---
+
+### 📈 Observations:
+- 📉 **WIP changed** from {opening_wip} to {closing_wip}, suggesting {"a reduction" if closing_wip < opening_wip else "an increase"}.
+- 🔍 **Top Sources with high WIP**:
+  {"".join([f"  • {k}: {v} cases\n" for k, v in top_sources.items()])}
+- 🗂️ **Top Event Types**:
+  {"".join([f"  • {k}: {v} cases\n" for k, v in top_events.items()])}
+- 🏷️ **Top Portfolios**:
+  {"".join([f"  • {k}: {v} cases\n" for k, v in top_portfolios.items()])}
+- ⚠️ **{high_wip_records.shape[0]} cases** had unusually high WIP days (possible bottlenecks).
+
+---
+"""
+    return response
+
 # ---------------- AI CHATBOT SECTION ----------------
 st.markdown("## 🤖 Meet **Opsi** – Your Analyst Copilot")
 
@@ -517,7 +575,6 @@ st.markdown("## 🤖 Meet **Opsi** – Your Analyst Copilot")
 raw_url = "https://raw.githubusercontent.com/SwapnilGautama/AI-Insights-Dashboard/refs/heads/main/operational_data_full_jan_to_mar_2025.csv"
 
 try:
-    raw_df = pd.read_csv(raw_url, dayfirst=True, parse_dates=["Start Date", "End Date", "Target Date"])
     raw_df = pd.read_csv(raw_url, dayfirst=True, parse_dates=["Start Date", "End Date", "Target Date"])
     raw_df["WIP Days"] = (raw_df["End Date"] - raw_df["Start Date"]).dt.days
     raw_df["WIP Days"] = raw_df["WIP Days"].fillna((pd.Timestamp.now() - raw_df["Start Date"]).dt.days).astype(int)
@@ -546,6 +603,14 @@ if user_question:
 
             if "wip" in user_question.lower() and possible_month:
                 reply = generate_prescriptive_response(kpi_df, raw_df, month_name=possible_month)
+            elif "wip" in user_question.lower() and "week" in user_question.lower():
+                import re
+                match = re.search(r"(\d{4}-\d{2}-\d{2})", user_question)
+                if match:
+                    week_start_str = match.group(1)
+                    reply = generate_weekly_prescriptive_response(kpi_df, raw_df, week_start_str)
+                else:
+                    reply = "⚠️ Please specify the week start date in `YYYY-MM-DD` format (e.g., 'week of 2025-02-03')."
             else:
                 client = OpenAI(api_key=st.secrets["openai_key"])
 
