@@ -20,18 +20,27 @@ import textwrap
 def safe_json(obj):
     import numpy as np
     import pandas as pd
+    import json
+    from datetime import datetime
 
     def convert(o):
-        if isinstance(o, (np.integer, np.int64)): return int(o)
-        if isinstance(o, (np.floating, np.float64)): return float(o)
-        if isinstance(o, (np.ndarray, list)): return list(o)
-        if isinstance(o, (pd.Timestamp, datetime)): return o.strftime('%Y-%m-%d')
-        if isinstance(o, pd.Period): return str(o)
-        if isinstance(o, dict): return {k: convert(v) for k, v in o.items()}
-        if isinstance(o, (pd.DataFrame, pd.Series)): return o.to_dict()
+        if isinstance(o, (np.integer, np.int64)):
+            return int(o)
+        if isinstance(o, (np.floating, np.float64)):
+            return float(o)
+        if isinstance(o, (np.ndarray, list)):
+            return list(o)
+        if isinstance(o, (pd.Timestamp, datetime)):
+            return o.strftime('%Y-%m-%d')
+        if isinstance(o, pd.Period):
+            return str(o)
+        if isinstance(o, dict):
+            return {k: convert(v) for k, v in o.items()}
+        if isinstance(o, (pd.DataFrame, pd.Series)):
+            return o.to_dict()
         return o
 
-   return json.dumps(convert(obj), indent=2, default=str)
+    return json.dumps(convert(obj), indent=2, default=str)
 
 # ---------------- PAGE SETUP ----------------
 st.set_page_config(page_title="📊 KPI AI Dashboard", layout="wide")
