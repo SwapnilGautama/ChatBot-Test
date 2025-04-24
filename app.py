@@ -604,7 +604,7 @@ def generate_weekly_prescriptive_response(kpi_df, raw_df, week_start_date_str):
     return response
 
 # ---------------- AI CHATBOT SECTION ----------------
-st.markdown("## 🤖 Meet **Opsi** – Your Analyst Copilot")
+st.markdown("## 🤖 Meet **Opsi** – Your Intelligent Analyst")
 
 # ✅ Load the same CSV used for the dashboard from GitHub
 raw_url = "https://raw.githubusercontent.com/SwapnilGautama/AI-Insights-Dashboard/refs/heads/main/operational_data_full_jan_to_mar_2025.csv"
@@ -639,12 +639,30 @@ if user_question:
 
             if "wip" in user_question.lower() and "week" in user_question.lower():
                 parsed_date = dateparser.parse(user_question, settings={"PREFER_DATES_FROM": "past"})
-                if parsed_date:
+
+                if not parsed_date:
+                    # Fallback: "1st week of February", "2nd week of March"
+                    import re
+                    week_match = re.search(r"(\d+)(?:st|nd|rd|th)? week of (\w+)", user_question.lower())
+                    if week_match:
+                        week_num = int(week_match.group(1))
+                        month_name = week_match.group(2).capitalize()
+
+                        try:
+                            month_dt = pd.to_datetime(f"1 {month_name} 2025")
+                            week_start = month_dt + pd.Timedelta(days=(week_num - 1) * 7)
+                            week_start = week_start - pd.Timedelta(days=week_start.weekday())
+                            week_start_str = week_start.strftime("%Y-%m-%d")
+                            reply = generate_weekly_prescriptive_response(kpi_df, raw_df, week_start_str)
+                        except Exception:
+                            reply = "⚠️ Couldn't parse the week/month combination. Try 'week of 3rd March'."
+                    else:
+                        reply = "⚠️ I couldn’t understand the week reference. Try something like 'week of 3rd March' or '1st week of Feb'."
+                else:
                     week_start = parsed_date - pd.Timedelta(days=parsed_date.weekday())
                     week_start_str = week_start.strftime("%Y-%m-%d")
                     reply = generate_weekly_prescriptive_response(kpi_df, raw_df, week_start_str)
-                else:
-                    reply = "⚠️ I couldn’t understand the week reference. Try something like 'week of 3rd March' or '1st week of Feb'."
+
             elif "wip" in user_question.lower() and possible_month:
                 reply = generate_prescriptive_response(kpi_df, raw_df, month_name=possible_month)
             else:
