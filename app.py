@@ -604,7 +604,7 @@ def generate_weekly_prescriptive_response(kpi_df, raw_df, week_start_date_str):
     return response
 
 # ---------------- AI CHATBOT SECTION ----------------
-st.markdown("## 🤖 Meet **Opsi** – Your Intelligent Analyst")
+st.markdown("## 🤖 Meet **Opsi** – Your Analyst Copilot")
 
 # ✅ Load the same CSV used for the dashboard from GitHub
 raw_url = "https://raw.githubusercontent.com/SwapnilGautama/AI-Insights-Dashboard/refs/heads/main/operational_data_full_jan_to_mar_2025.csv"
@@ -638,12 +638,23 @@ if user_question:
             possible_month = next((word for word in tokens if word.capitalize() in calendar.month_name), None)
 
             if "wip" in user_question.lower() and "week" in user_question.lower():
-                parsed_date = dateparser.parse(user_question, settings={"PREFER_DATES_FROM": "past"})
+                # Clean fuzzy phrasing for better parsing
+                cleaned_input = (
+                    user_question.lower()
+                    .replace("week of", "starting")
+                    .replace("week starting", "starting")
+                    .replace("th", "")
+                    .replace("st", "")
+                    .replace("nd", "")
+                    .replace("rd", "")
+                )
+
+                parsed_date = dateparser.parse(cleaned_input, settings={"PREFER_DATES_FROM": "past"})
 
                 if not parsed_date:
                     # Fallback: "1st week of February", "2nd week of March"
                     import re
-                    week_match = re.search(r"(\d+)(?:st|nd|rd|th)? week of (\w+)", user_question.lower())
+                    week_match = re.search(r"(\d+)\s*week of (\w+)", cleaned_input)
                     if week_match:
                         week_num = int(week_match.group(1))
                         month_name = week_match.group(2).capitalize()
