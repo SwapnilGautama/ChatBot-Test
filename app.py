@@ -633,19 +633,20 @@ user_question = st.text_input("Ask anything about performance trends:", key="cha
 if user_question:
     with st.spinner("Opsi is thinking..."):
         try:
+            import dateparser
             tokens = user_question.lower().split()
             possible_month = next((word for word in tokens if word.capitalize() in calendar.month_name), None)
 
             if "wip" in user_question.lower() and possible_month:
                 reply = generate_prescriptive_response(kpi_df, raw_df, month_name=possible_month)
             elif "wip" in user_question.lower() and "week" in user_question.lower():
-                import re
-                match = re.search(r"(\d{4}-\d{2}-\d{2})", user_question)
-                if match:
-                    week_start_str = match.group(1)
+                parsed_date = dateparser.parse(user_question, settings={"PREFER_DATES_FROM": "past"})
+                if parsed_date:
+                    week_start = parsed_date - pd.Timedelta(days=parsed_date.weekday())
+                    week_start_str = week_start.strftime("%Y-%m-%d")
                     reply = generate_weekly_prescriptive_response(kpi_df, raw_df, week_start_str)
                 else:
-                    reply = "⚠️ Please specify the week start date in `YYYY-MM-DD` format (e.g., 'week of 2025-02-03')."
+                    reply = "⚠️ I couldn’t understand the week reference. Try something like 'week of 3rd March' or '1st week of Feb'."
             else:
                 client = OpenAI(api_key=st.secrets["openai_key"])
 
