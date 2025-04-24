@@ -31,7 +31,7 @@ def safe_json(obj):
         if isinstance(o, (pd.DataFrame, pd.Series)): return o.to_dict()
         return o
 
-    return json.dumps(convert(obj), indent=2)
+   return json.dumps(convert(obj), indent=2, default=str)
 
 # ---------------- PAGE SETUP ----------------
 st.set_page_config(page_title="📊 KPI AI Dashboard", layout="wide")
@@ -333,16 +333,16 @@ Below is a filtered performance snapshot, based on the user's selected week and 
 ])}
 
 - **Top Pend Reasons**:
-{json.dumps(pend_reason_summary, indent=2)}
+{safe_json(pend_reason_summary)}
 
 - 📅 **Daily KPI Summary**:
-{json.dumps(daily_kpi_summary, indent=2)}
+{safe_json(daily_kpi_summary)}
 
 - 📈 **Weekly KPI Summary**:
-{json.dumps(weekly_kpi_summary, indent=2)}
+{safe_json(weekly_kpi_summary)}
 
 - 📆 **Monthly KPI Summary**:
-{json.dumps(monthly_kpi_summary, indent=2)}
+{safe_json(monthly_kpi_summary)}
 
 Now generate **5 strategic insights** that are:
 - Actionable and rooted in the data
