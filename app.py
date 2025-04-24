@@ -641,12 +641,17 @@ if user_question:
                 # Clean fuzzy phrasing for better parsing
                 cleaned_input = (
                     user_question.lower()
+                    .replace("for the week of", "starting")
+                    .replace("the week of", "starting")
                     .replace("week of", "starting")
                     .replace("week starting", "starting")
+                    .replace("wip for", "")
+                    .replace("wip", "")
                     .replace("th", "")
                     .replace("st", "")
                     .replace("nd", "")
                     .replace("rd", "")
+                    .strip()
                 )
 
                 parsed_date = dateparser.parse(cleaned_input, settings={"PREFER_DATES_FROM": "past"})
