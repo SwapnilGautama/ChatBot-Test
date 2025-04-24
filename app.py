@@ -637,9 +637,7 @@ if user_question:
             tokens = user_question.lower().split()
             possible_month = next((word for word in tokens if word.capitalize() in calendar.month_name), None)
 
-            if "wip" in user_question.lower() and possible_month:
-                reply = generate_prescriptive_response(kpi_df, raw_df, month_name=possible_month)
-            elif "wip" in user_question.lower() and "week" in user_question.lower():
+            if "wip" in user_question.lower() and "week" in user_question.lower():
                 parsed_date = dateparser.parse(user_question, settings={"PREFER_DATES_FROM": "past"})
                 if parsed_date:
                     week_start = parsed_date - pd.Timedelta(days=parsed_date.weekday())
@@ -647,6 +645,8 @@ if user_question:
                     reply = generate_weekly_prescriptive_response(kpi_df, raw_df, week_start_str)
                 else:
                     reply = "⚠️ I couldn’t understand the week reference. Try something like 'week of 3rd March' or '1st week of Feb'."
+            elif "wip" in user_question.lower() and possible_month:
+                reply = generate_prescriptive_response(kpi_df, raw_df, month_name=possible_month)
             else:
                 client = OpenAI(api_key=st.secrets["openai_key"])
 
