@@ -603,6 +603,62 @@ def generate_weekly_prescriptive_response(kpi_df, raw_df, week_start_date_str):
 """
     return response
 
+def generate_wip_trend_insights(df):
+    df = df.copy()
+    df["Start Date"] = pd.to_datetime(df["Start Date"])
+    df["End Date"] = pd.to_datetime(df["End Date"])
+    df["Date"] = df["Start Date"]
+    df["Week"] = df["Date"].dt.to_period("W").apply(lambda r: r.start_time)
+    df["Month"] = df["Date"].dt.to_period("M").astype(str)
+
+    # Closing WIP calculation: Count of open cases per day
+    open_df = df[df["End Date"].isna()]
+    last_day = df["Date"].max()
+    first_day = last_day - pd.Timedelta(days=90)
+    trend_df = df[(df["Date"] >= first_day) & (df["Date"] <= last_day)]
+
+    # Trend lines
+    daily_wip = trend_df.groupby("Date").apply(lambda x: x[x["End Date"].isna()].shape[0])
+    weekly_wip = trend_df.groupby("Week").apply(lambda x: x[x["End Date"].isna()].shape[0])
+    monthly_wip = trend_df.groupby("Month").apply(lambda x: x[x["End Date"].isna()].shape[0])
+
+    # Trend summaries
+    last_7 = daily_wip.tail(7).to_dict()
+    last_12w = weekly_wip.tail(12).to_dict()
+    last_3m = monthly_wip.tail(3).to_dict()
+
+    # Root cause drilldown
+    pend_df = trend_df[trend_df["Pend Case"].astype(str).str.lower() == "yes"]
+    pend_rate = f"{round(pend_df.shape[0] / trend_df.shape[0] * 100, 1)}%" if trend_df.shape[0] > 0 else "0%"
+
+    top_sources = trend_df["Source"].value_counts().head(3).to_dict()
+    top_portfolios = trend_df["Portfolio"].value_counts().head(3).to_dict()
+    top_manual = trend_df["Manual/RPA"].value_counts().head(3).to_dict()
+    pend_reasons = pend_df["Pend Reason"].value_counts().head(3).to_dict()
+
+    return f"""
+📈 **WIP Trend Overview**
+
+**🗓️ Monthly WIP (Last 3 Months)**  
+{safe_json(last_3m)}
+
+**📅 Weekly WIP (Last 12 Weeks)**  
+{safe_json(last_12w)}
+
+**📆 Daily WIP (Last 7 Days)**  
+{safe_json(last_7)}
+
+---
+
+🔍 **Trend Drivers & Observations**
+
+- 🔗 **Top Sources with high WIP**: {safe_json(top_sources)}
+- 🗂️ **Portfolios impacted**: {safe_json(top_portfolios)}
+- 🤖 **Manual/RPA breakdown**: {safe_json(top_manual)}
+- 📋 **Pend Rate**: {pend_rate}
+- 🧾 **Top Pend Reasons**: {safe_json(pend_reasons)}
+"""
+
 # ---------------- AI CHATBOT SECTION ----------------
 st.markdown("## 🤖 Meet **Opsi** – Your Analyst Copilot")
 
@@ -638,7 +694,10 @@ if user_question:
             tokens = user_question.lower().split()
             possible_month = next((word for word in tokens if word.capitalize() in calendar.month_name), None)
 
-            if "wip" in user_question.lower() and "week" in user_question.lower():
+            if "wip" in user_question.lower() and "trend" in user_question.lower():
+                reply = generate_wip_trend_insights(raw_df)
+
+            elif "wip" in user_question.lower() and "week" in user_question.lower():
                 # Clean fuzzy phrasing for better parsing
                 cleaned_input = (
                     user_question.lower()
