@@ -1,7 +1,12 @@
 streamlit
-openai
 pandas
-plotly
-tabulate
-faiss-cpu
+openai >= 1.1.1
+xlsxwriter
 dateparser
+requests
+openpyxl
+matplotlib
+python-dateutil
+requests
+fpdf
+tabulate
