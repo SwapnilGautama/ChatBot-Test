@@ -50,8 +50,7 @@ Return only Python code.
         temperature=0
     )
     code = response.choices[0].message.content
-    # Fix: remove any return statements to avoid crashing
-    code = re.sub(r'\breturn\s+.*', '', code)
+    code = re.sub(r'\breturn\s+.*', '', code)  # 🛠 Fix: avoid 'return' statement crash
     return code
 
 def generate_pdf(df):
@@ -150,7 +149,6 @@ Try asking something like:
 
             st.dataframe(final[["Client", "Revenue ($M)", "Cost ($M)", "Resources_Total", "Revenue/Resource ($K)", "Cost/Resource ($K)"]], use_container_width=True)
 
-            # Pie charts
             st.subheader("🔹 Distribution by Client")
             pie_cols = ["Revenue", "Cost", "Resources_Total"]
             labels = summary["Client"]
@@ -161,7 +159,6 @@ Try asking something like:
                 ax.set_title(f"{col} by Client")
                 [col1, col2, col3][i].pyplot(fig)
 
-            # Monthly revenue trend
             st.markdown("### 📊 Monthly Revenue Trend by Client")
             df["Month_Parsed"] = pd.to_datetime(df["Month"])
             monthly_group = df.groupby(["Client", "Month_Parsed"])["Revenue"].sum().reset_index()
