@@ -8,10 +8,8 @@ from fpdf import FPDF
 import base64
 import re
 
-# 🔑 Set your OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# 📄 GitHub raw CSV URL
 CSV_URL = "https://raw.githubusercontent.com/SwapnilGautama/CloudInsights/main/SoftwareCompany_2025_Data.csv"
 
 @st.cache_data
@@ -20,7 +18,6 @@ def load_data():
     df['Month'] = pd.to_datetime(df['Month'])
     return df
 
-# 🧠 GPT-powered query interpreter
 def ask_gpt(user_query, df_sample):
     prompt = f"""
     You are a data analyst. Given a dataset with these columns:
@@ -54,7 +51,6 @@ def ask_gpt(user_query, df_sample):
 
     return response.choices[0].message.content
 
-# 📊 Plot helpers
 def plot_bar(data, title, ylabel):
     fig, ax = plt.subplots(figsize=(6, 4))
     data.plot(kind="bar", ax=ax)
@@ -62,7 +58,6 @@ def plot_bar(data, title, ylabel):
     ax.set_ylabel(ylabel)
     st.pyplot(fig)
 
-# 📟 PDF Generator
 def generate_pdf(df):
     pdf = FPDF()
     pdf.add_page()
@@ -84,7 +79,6 @@ def generate_pdf(df):
 
     return pdf.output(dest='S').encode('latin1')
 
-# 🧠 AI Summary Writer
 def generate_summary(df):
     prompt = f"""
     You are a senior business analyst. Given this client-level summary:
@@ -104,36 +98,37 @@ def generate_summary(df):
     )
     return response.choices[0].message.content.strip()
 
-# ✨ Streamlit App
+# 🧠 MAIN APP
 st.set_page_config(page_title="Cloud Insights Chatbot", page_icon="💬", layout="wide")
 st.title("💬 Cloud Insights Chatbot")
 
 df = load_data()
 
-# Sidebar
 with st.sidebar:
     st.markdown("### 🗞 Clients in Dataset")
     for client in sorted(df["Client"].unique()):
         st.markdown(f"- {client}")
 
-user_query = st.text_input("Ask a question like:", "Show revenue and cost breakdown for BMW")
+# 🟡 Start with empty input, let user say "hello"
+user_query = st.text_input("Ask a question like:", "")
 
 if user_query:
     try:
-        # 💬 Handle greetings like "hello", "hi", etc.
         if user_query.lower().strip() in ["hello", "hi", "hey", "hi there", "hello there"]:
             st.markdown("👋 Hello! I'm your Cloud Insights chatbot.")
             st.markdown("""
-            Here's what I can help you with:
-            - 📊 Show revenue and cost breakdowns by client, project, or time
-            - 🔎 Compare clients by revenue, cost, or resource usage
-            - 📈 Show trends over time (monthly revenue/cost)
-            - 🧾 Generate a full client report by typing **client report**
+Here's what I can help you with:
 
-            Try asking something like:
-            - `Show revenue and cost breakdown for BMW`
-            - `Give me the overall totals`
-            - `Client report`
+- 📊 Show revenue and cost breakdowns by client, project, or time  
+- 🔎 Compare clients by revenue, cost, or resource usage  
+- 📈 Show trends over time (monthly revenue/cost)  
+- 🧾 Generate a full client report by typing **client report**
+
+Try asking something like:
+
+- `Show revenue and cost breakdown for BMW`  
+- `Give me the overall totals`  
+- `Client report`
             """)
         elif "client report" in user_query.lower():
             st.subheader("📊 Client-wise Summary Table")
