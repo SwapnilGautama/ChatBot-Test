@@ -19,12 +19,12 @@ def load_data():
     df['Month'] = pd.to_datetime(df['Month'])
     return df
 
-def ask_gpt(user_input, df_sample):
+def ask_gpt(user_query, df_sample):
     prompt = f"""
 You are a data analyst. Given a dataset with these columns:
 {', '.join(df_sample.columns)}
 
-The user asked: "{user_input.lower()}"
+The user asked: "{user_query.lower()}"
 
 Generate a Python pandas code snippet that:
 1. If the user asks for 'total', 'overall', 'aggregate', or 'company-wide', show revenue and cost across the **entire dataset**.
@@ -49,7 +49,10 @@ Return only Python code.
         messages=[{"role": "user", "content": prompt}],
         temperature=0
     )
-    return response.choices[0].message.content
+    code = response.choices[0].message.content
+    # Fix: remove any return statements to avoid crashing
+    code = re.sub(r'\breturn\s+.*', '', code)
+    return code
 
 def generate_pdf(df):
     pdf = FPDF()
@@ -97,11 +100,11 @@ with st.sidebar:
     for client in sorted(df["Client"].unique()):
         st.markdown(f"- {client}")
 
-user_input = st.text_input("Ask a question like:")
+user_query = st.text_input("Ask a question like:", "")
 
-if user_input:
+if user_query:
     try:
-        lower_query = user_input.lower().strip()
+        lower_query = user_query.lower().strip()
 
         if lower_query in ["hello", "hi", "hey", "hi there", "hello there"]:
             st.markdown("👋 Hello! I'm your Cloud Insights chatbot.")
@@ -176,9 +179,9 @@ Try asking something like:
 
         else:
             st.markdown("Generating insights...")
-            code = ask_gpt(user_input, df.head(3))
-            local_vars = {"df": df.copy(), "user_input": user_input}
-            exec(re.sub(r"```(?:python)?", "", code).strip("`").strip(), {}, local_vars)
+            code = ask_gpt(user_query, df.head(3))
+            local_vars = {"df": df.copy()}
+            exec(code.strip(), {}, local_vars)
 
             if 'result' in local_vars:
                 result = local_vars['result']
@@ -187,7 +190,7 @@ Try asking something like:
 
                 st.subheader("📌 Key Insights Summary")
                 for _, row in summary1.reset_index().iterrows():
-                    st.markdown(f"- The total revenue is **{row['Revenue'] / 1_000_000:.2f}M** and total cost is **{summary2.sum().sum() / 1_000_000:.2f}M** for `{row['Type']}` engagements.")
+                    st.markdown(f"- **Total revenue: ${row['Revenue'] / 1_000_000:.2f}M** for `{row['Type']}`")
 
                 st.subheader("📊 Summary by Type (Aggregated)")
                 summary_df = result.groupby("Type").agg({"Revenue": "sum", "Cost": "sum", "Resources_Total": "sum"}).reset_index()
