@@ -19,12 +19,12 @@ def load_data():
     df['Month'] = pd.to_datetime(df['Month'])
     return df
 
-def ask_gpt(user_query, df_sample):
+def ask_gpt(user_input, df_sample):
     prompt = f"""
 You are a data analyst. Given a dataset with these columns:
 {', '.join(df_sample.columns)}
 
-The user asked: "{user_query.lower()}"
+The user asked: "{user_input.lower()}"
 
 Generate a Python pandas code snippet that:
 1. If the user asks for 'total', 'overall', 'aggregate', or 'company-wide', show revenue and cost across the **entire dataset**.
@@ -97,11 +97,11 @@ with st.sidebar:
     for client in sorted(df["Client"].unique()):
         st.markdown(f"- {client}")
 
-user_query = st.text_input("Ask a question like:", "")
+user_input = st.text_input("Ask a question like:")
 
-if user_query:
+if user_input:
     try:
-        lower_query = user_query.lower().strip()
+        lower_query = user_input.lower().strip()
 
         if lower_query in ["hello", "hi", "hey", "hi there", "hello there"]:
             st.markdown("👋 Hello! I'm your Cloud Insights chatbot.")
@@ -176,8 +176,8 @@ Try asking something like:
 
         else:
             st.markdown("Generating insights...")
-            code = ask_gpt(user_query, df.head(3))
-            local_vars = {"df": df.copy()}
+            code = ask_gpt(user_input, df.head(3))
+            local_vars = {"df": df.copy(), "user_input": user_input}
             exec(re.sub(r"```(?:python)?", "", code).strip("`").strip(), {}, local_vars)
 
             if 'result' in local_vars:
@@ -185,10 +185,9 @@ Try asking something like:
                 summary1 = local_vars.get('summary1')
                 summary2 = local_vars.get('summary2')
 
-                # Summary Text
                 st.subheader("📌 Key Insights Summary")
                 for _, row in summary1.reset_index().iterrows():
-                    st.markdown(f"- **Total revenue: ${row['Revenue'] / 1_000_000:.2f}M** for `{row['Type']}`")
+                    st.markdown(f"- The total revenue is **{row['Revenue'] / 1_000_000:.2f}M** and total cost is **{summary2.sum().sum() / 1_000_000:.2f}M** for `{row['Type']}` engagements.")
 
                 st.subheader("📊 Summary by Type (Aggregated)")
                 summary_df = result.groupby("Type").agg({"Revenue": "sum", "Cost": "sum", "Resources_Total": "sum"}).reset_index()
