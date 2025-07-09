@@ -120,7 +120,22 @@ user_query = st.text_input("Ask a question like:", "Show revenue and cost breakd
 
 if user_query:
     try:
-        if "client report" in user_query.lower():
+        # 💬 Handle greetings like "hello", "hi", etc.
+        if user_query.lower().strip() in ["hello", "hi", "hey", "hi there", "hello there"]:
+            st.markdown("👋 Hello! I'm your Cloud Insights chatbot.")
+            st.markdown("""
+            Here's what I can help you with:
+            - 📊 Show revenue and cost breakdowns by client, project, or time
+            - 🔎 Compare clients by revenue, cost, or resource usage
+            - 📈 Show trends over time (monthly revenue/cost)
+            - 🧾 Generate a full client report by typing **client report**
+
+            Try asking something like:
+            - `Show revenue and cost breakdown for BMW`
+            - `Give me the overall totals`
+            - `Client report`
+            """)
+        elif "client report" in user_query.lower():
             st.subheader("📊 Client-wise Summary Table")
             summary = df.groupby("Client").agg({
                 "Revenue": "sum",
