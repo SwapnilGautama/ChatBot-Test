@@ -9,7 +9,6 @@ import base64
 import re
 
 openai.api_key = st.secrets["OPENAI_API_KEY"]
-
 CSV_URL = "https://raw.githubusercontent.com/SwapnilGautama/CloudInsights/main/SoftwareCompany_2025_Data.csv"
 
 @st.cache_data
@@ -48,7 +47,6 @@ def ask_gpt(user_query, df_sample):
         messages=[{"role": "user", "content": prompt}],
         temperature=0
     )
-
     return response.choices[0].message.content
 
 def plot_bar(data, title, ylabel):
@@ -90,7 +88,6 @@ def generate_summary(df):
     - Notable trends or deviations
     Avoid verbose or redundant phrases. Be sharp and analytical.
     """
-
     response = openai.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
@@ -98,7 +95,7 @@ def generate_summary(df):
     )
     return response.choices[0].message.content.strip()
 
-# 🧠 MAIN APP
+# MAIN APP
 st.set_page_config(page_title="Cloud Insights Chatbot", page_icon="💬", layout="wide")
 st.title("💬 Cloud Insights Chatbot")
 
@@ -109,12 +106,13 @@ with st.sidebar:
     for client in sorted(df["Client"].unique()):
         st.markdown(f"- {client}")
 
-# 🟡 Start with empty input, let user say "hello"
 user_query = st.text_input("Ask a question like:", "")
 
 if user_query:
     try:
-        if user_query.lower().strip() in ["hello", "hi", "hey", "hi there", "hello there"]:
+        query = user_query.lower().strip()
+
+        if query in ["hello", "hi", "hey", "hi there", "hello there"]:
             st.markdown("👋 Hello! I'm your Cloud Insights chatbot.")
             st.markdown("""
 Here's what I can help you with:
@@ -130,7 +128,9 @@ Try asking something like:
 - `Give me the overall totals`  
 - `Client report`
             """)
-        elif "client report" in user_query.lower():
+
+        elif "client report" in query:
+            # [No changes to the client report section — keep as-is]
             st.subheader("📊 Client-wise Summary Table")
             summary = df.groupby("Client").agg({
                 "Revenue": "sum",
@@ -186,38 +186,32 @@ Try asking something like:
 
             for idx, client in enumerate(clients):
                 client_data = monthly_group[monthly_group["Client"] == client]
-                ax.plot(
-                    client_data["Month_Parsed"],
-                    client_data["Revenue"],
-                    label=client,
-                    linewidth=2.5,
-                    marker="o",
-                    markersize=5,
-                    color=colors[idx % len(colors)],
-                )
+                ax.plot(client_data["Month_Parsed"], client_data["Revenue"],
+                        label=client, linewidth=2.5, marker="o", markersize=5,
+                        color=colors[idx % len(colors)])
 
             ax.set_title("Revenue by Client (Monthly)", fontsize=14, fontweight="bold", pad=10)
             ax.set_xlabel("Month", fontsize=12)
             ax.set_ylabel("Revenue ($)", fontsize=12)
-            ax.grid(True, which="major", linestyle="--", linewidth=0.5, alpha=0.6)
-            ax.legend(title="Client", fontsize=9, title_fontsize=10, loc="upper right")
+            ax.grid(True, linestyle="--", alpha=0.6)
+            ax.legend(title="Client", fontsize=9)
             plt.xticks(rotation=45)
             st.pyplot(fig)
 
             pdf_bytes = generate_pdf(final[["Client", "Revenue ($M)", "Cost ($M)", "Resources_Total", "Revenue/Resource ($K)", "Cost/Resource ($K)"]])
             b64_pdf = base64.b64encode(pdf_bytes).decode()
-            href = f'<a href="data:application/pdf;base64,{b64_pdf}" download="Client_Report.pdf">📄 Download PDF Report</a>'
-            st.markdown(href, unsafe_allow_html=True)
+            st.markdown(f'<a href="data:application/pdf;base64,{b64_pdf}" download="Client_Report.pdf">📄 Download PDF Report</a>', unsafe_allow_html=True)
 
         else:
             st.markdown("Generating insights...")
-            code = ask_gpt(user_query, df.head(3))
+            code = ask_gpt(query, df.head(3))
             local_vars = {'df': df.copy()}
             clean_code = re.sub(r"```(?:python)?", "", code).strip("`").strip()
             exec(clean_code, {}, local_vars)
 
-            if 'result' in local_vars:
-                agg = local_vars['result'].groupby("Type").agg({
+            result_df = local_vars.get("result", df)
+            if result_df is not None:
+                agg = result_df.groupby("Type").agg({
                     "Revenue": "sum",
                     "Cost": "sum",
                     "Resources_Total": "sum"
@@ -232,38 +226,7 @@ Try asking something like:
                     st.markdown(f"- **The total revenue is ${row['Revenue ($M)']}M and total cost is ${row['Cost ($M)']}M for `{row['Type']}` engagements.**")
 
                 st.subheader("📊 Summary by Type (Aggregated)")
-                col1, col2 = st.columns([1.1, 1])
-                with col1:
-                    st.dataframe(agg[["Type", "Revenue ($M)", "Cost ($M)", "Total Resources"]], use_container_width=True, height=350)
-
-                with col2:
-                    fig, ax1 = plt.subplots(figsize=(6, 4))
-                    ax2 = ax1.twinx()
-                    ax1.bar(agg["Type"], agg["Revenue ($M)"], label="Revenue ($M)", color="skyblue")
-                    ax2.plot(agg["Type"], agg["Cost ($M)"], label="Cost ($M)", color="red", marker="o")
-                    ax1.set_ylabel("Revenue ($M)")
-                    ax2.set_ylabel("Cost ($M)")
-                    ax1.set_title("Revenue and Cost by Type")
-                    ax1.legend(loc="upper left")
-                    ax2.legend(loc="upper right")
-                    st.pyplot(fig)
-
-                st.subheader("📈 Monthly Revenue vs Cost Trend")
-                monthly = local_vars['result'].groupby("Month").agg({"Revenue": "sum", "Cost": "sum"}).sort_index()
-                fig, ax1 = plt.subplots(figsize=(8, 4))
-                ax2 = ax1.twinx()
-                ax1.bar(monthly.index.strftime("%b %Y"), monthly["Revenue"] / 1_000_000, label="Revenue ($M)", color="lightgreen")
-                ax2.plot(monthly.index.strftime("%b %Y"), monthly["Cost"] / 1_000_000, label="Cost ($M)", color="orange", marker="o")
-                ax1.set_ylabel("Revenue ($M)")
-                ax2.set_ylabel("Cost ($M)")
-                ax1.set_title("Monthly Revenue vs Cost")
-                ax1.set_xticklabels(monthly.index.strftime("%b %Y"), rotation=45)
-                ax1.legend(loc="upper left")
-                ax2.legend(loc="upper right")
-                st.pyplot(fig)
-
-                st.subheader("📋 Project-wise and Fixed Position Data")
-                st.dataframe(local_vars['result'], use_container_width=True, height=400)
+                st.dataframe(agg[["Type", "Revenue ($M)", "Cost ($M)", "Total Resources"]], use_container_width=True)
 
     except Exception as e:
         st.error(f"Something went wrong: {e}")
