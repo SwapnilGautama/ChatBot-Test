@@ -207,7 +207,7 @@ I work with data across multiple clients including:
                 clean_code = re.sub(r"```(?:python)?", "", code).strip("`").strip()
                 exec(clean_code, {}, local_vars)
 
-                if 'result' in local_vars:
+                if 'result' in local_vars and isinstance(local_vars['result'], pd.DataFrame) and not local_vars['result'].empty:
                     agg = local_vars['result'].groupby("Type").agg({
                         "Revenue": "sum",
                         "Cost": "sum",
@@ -221,7 +221,10 @@ I work with data across multiple clients including:
                     st.subheader("📌 Key Insights Summary")
                     for _, row in agg.iterrows():
                         st.markdown(f"- **The total revenue is ${row['Revenue ($M)']}M and total cost is ${row['Cost ($M)']}M for `{row['Type']}` engagements.**")
-
+                
+                 else:
+                     st.warning("🤖 I couldn’t understand that question. Please ask something related to revenue, cost, or client reports.")  
+    
                     st.subheader("📊 Summary by Type (Aggregated)")
                     col1, col2 = st.columns([1.1, 1])
                     with col1:
