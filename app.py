@@ -113,7 +113,6 @@ I work with data across multiple clients including:
 ### ✅ You can ask me:
 - `Show revenue and cost breakdown for BMW`  
 - `Client report`  
-- `Monthly trend for Infosys`  
 - `Compare revenue across clients`  
 
 👉 Ask a question to get started, and I’ll also guide you with follow-up questions!
@@ -257,7 +256,6 @@ I work with data across multiple clients including:
                     st.dataframe(local_vars['result'], use_container_width=True, height=400)
 
                     st.markdown("💡 _Try also asking:_")
-                    st.markdown("- `Monthly trend for Infosys`")
                     st.markdown("- `Compare revenue across clients`")
                     st.markdown("- `Client report`")
 
