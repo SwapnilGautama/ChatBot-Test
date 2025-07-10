@@ -97,12 +97,7 @@ st.set_page_config(page_title="Cloud Insights Chatbot", page_icon="💬", layout
 st.title("💬 Cloud Insights Chatbot")
 df = load_data()
 
-with st.sidebar:
-    st.markdown("### 🗞 Clients in Dataset")
-    for client in sorted(df["Client"].unique()):
-        st.markdown(f"- {client}")
-
-user_query = st.text_input("Ask a question like:", "")
+user_query = st.text_input("Hi There:", "")
 
 if user_query:
     try:
@@ -114,7 +109,7 @@ I can help analyze your software company’s data around revenue, cost, and reso
 
 Try asking:
 - `Show revenue and cost breakdown for BMW`  
-- `What are the overall totals for cost and revenue?`  
+- `Ask cost and revenue for other clients we have like Audi, Mercedes, Porche or Volkswagen`  
 - `Client report`
 
 👉 After each question, I’ll suggest what to explore next!
