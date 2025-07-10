@@ -20,31 +20,27 @@ def load_data():
 
 def ask_gpt(user_query, df_sample):
     prompt = f"""
-You are a data analyst. You are working with a pandas dataframe with these columns:
-{', '.join(df_sample.columns)}
+    You are a data analyst. Given a dataset with these columns:
+    {', '.join(df_sample.columns)}
 
-The user asked: "{user_query}"
+    The user asked: "{user_query.lower()}"
 
-Your job is to write Python pandas code to return:
-1. A filtered DataFrame based on the user query.
-2. Summaries:
-    - Revenue by 'Type' (Fixed_Position vs Project)
-    - Cost by Onshore vs Offshore
-    - Monthly Revenue vs Cost trend
+    Generate a Python pandas code snippet that filters and analyzes the dataset to provide:
+    1. If the user asks for 'total', 'overall', 'aggregate', or 'company-wide', show revenue and cost across the **entire dataset**.
+    2. If a client is mentioned, filter by that client (case-insensitive).
+    3. Provide:
+        - Total revenue and cost
+        - Revenue by 'Type' (Fixed_Position vs Project)
+        - Cost split by Onshore vs Offshore (Location_Onshore and Location_Offshore)
 
-If the user asks for 'overall', 'total', or 'aggregate', do NOT filter — return full dataset summaries.
+    Assume the dataframe is called df.
+    - Use `.str.lower()` for string comparisons
+    - Return the following variables:
+        - result → filtered df
+        - summary1 → revenue by Type
+        - summary2 → cost by Onshore/Offshore
 
-Requirements:
-- Assume dataframe is called df
-- Always return:
-    - result → filtered df (or entire df if aggregate)
-    - summary1 → revenue by Type
-    - summary2 → cost by Onshore/Offshore
-    - monthly → revenue and cost trend
-
-Use `.str.lower()` for string comparisons. DO NOT use `user_input` or `input()`. DO NOT use `return` statements. Just assign to variables.
-
-Only return code.
+    Just return executable Python code, no explanation.
     """
 
     response = openai.chat.completions.create(
