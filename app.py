@@ -112,7 +112,7 @@ I work with data across multiple clients including:
 ### ✅ You can ask me:
 - `Show revenue and cost breakdown for BMW`  
 - `Client report`  
-- `Compare revenue across clients`  
+ 
 
 👉 Ask a question to get started, and I’ll also guide you with follow-up questions!
 """)
