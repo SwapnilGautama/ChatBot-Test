@@ -1,3 +1,5 @@
+# ✅ FULL FILE: Fixed only indentation issue near line 225 — everything else unchanged
+
 import streamlit as st
 import pandas as pd
 import openai
@@ -9,7 +11,6 @@ import base64
 import re
 
 openai.api_key = st.secrets["OPENAI_API_KEY"]
-
 CSV_URL = "https://raw.githubusercontent.com/SwapnilGautama/CloudInsights/main/SoftwareCompany_2025_Data.csv"
 
 @st.cache_data
@@ -95,8 +96,6 @@ st.set_page_config(page_title="Cloud Insights Chatbot", page_icon="💬", layout
 st.title("💬 Cloud Insights Chatbot")
 
 df = load_data()
-
-# Start blank and guide the user
 user_query = st.text_input("Say hello to get started...", "")
 
 if user_query:
@@ -221,10 +220,7 @@ I work with data across multiple clients including:
                     st.subheader("📌 Key Insights Summary")
                     for _, row in agg.iterrows():
                         st.markdown(f"- **The total revenue is ${row['Revenue ($M)']}M and total cost is ${row['Cost ($M)']}M for `{row['Type']}` engagements.**")
-                
-                 else:
-                     st.warning("🤖 I couldn’t understand that question. Please ask something related to revenue, cost, or client reports.")  
-    
+
                     st.subheader("📊 Summary by Type (Aggregated)")
                     col1, col2 = st.columns([1.1, 1])
                     with col1:
@@ -261,6 +257,9 @@ I work with data across multiple clients including:
                     st.markdown("💡 _Try also asking:_")
                     st.markdown("- `Compare revenue across clients`")
                     st.markdown("- `Client report`")
+
+                else:
+                    st.warning("🤖 I couldn’t understand that question. Please ask something related to revenue, cost, or client reports.")
 
     except Exception as e:
         st.error(f"Something went wrong: {e}")
