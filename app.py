@@ -30,7 +30,6 @@ for client in sorted(clients):
 user_query = st.text_input("", placeholder="Type your question here...")
 
 # Function to generate code
-
 def generate_code(user_input):
     user_input_lower = user_input.lower()
 
@@ -41,8 +40,11 @@ def generate_code(user_input):
 total_revenue = df['Revenue'].sum()
 total_cost = df['Cost'].sum()
 
-# Return result
-total_revenue, total_cost
+# Store in dictionary
+result = {
+    "Total Revenue ($M)": round(total_revenue, 2),
+    "Total Cost ($M)": round(total_cost, 2)
+}
         """
 
     # Otherwise, fall back to GPT
@@ -56,7 +58,7 @@ Output only the Python code that:
 1. Filters by client or type if mentioned.
 2. Calculates and summarizes revenue and cost.
 3. Groups if needed.
-4. Ends with a return statement of the relevant objects.
+4. Ends with a dictionary or table for Streamlit output.
     """
 
     response = openai.ChatCompletion.create(
@@ -83,7 +85,7 @@ if user_query:
 
             # Output
             for val in local_vars.values():
-                if isinstance(val, (pd.DataFrame, pd.Series)):
+                if isinstance(val, (pd.DataFrame, pd.Series, dict)):
                     st.dataframe(val)
                 elif isinstance(val, (int, float, str)):
                     st.write(val)
