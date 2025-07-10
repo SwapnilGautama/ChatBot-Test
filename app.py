@@ -12,7 +12,7 @@ import re
 
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-CSV_URL = "https://raw.githubusercontent.com/SwapnilGautama/CloudInsights/main/SoftwareCompany_2025_Data.csv"
+CSV_URL = https://raw.githubusercontent.com/SwapnilGautama/CloudInsights/main/SoftwareCompany_2025_Data.csv
 
 @st.cache_data
 def load_data():
@@ -97,7 +97,12 @@ st.set_page_config(page_title="Cloud Insights Chatbot", page_icon="💬", layout
 st.title("💬 Cloud Insights Chatbot")
 df = load_data()
 
-user_query = st.text_input("Hi There:", "")
+with st.sidebar:
+    st.markdown("### 🗞 Clients in Dataset")
+    for client in sorted(df["Client"].unique()):
+        st.markdown(f"- {client}")
+
+user_query = st.text_input("Ask a question like:", "")
 
 if user_query:
     try:
@@ -109,7 +114,7 @@ I can help analyze your software company’s data around revenue, cost, and reso
 
 Try asking:
 - `Show revenue and cost breakdown for BMW`  
-- `Ask cost and revenue for other clients we have like Audi, Mercedes, Porche or Volkswagen`  
+- `What are the overall totals for cost and revenue?`  
 - `Client report`
 
 👉 After each question, I’ll suggest what to explore next!
@@ -204,4 +209,4 @@ Try asking:
                 st.markdown("- `Monthly trend for BMW`")
                 st.markdown("- `Breakdown by project`")
     except Exception as e:
-        st.error(f"Something went wrong: {e}")
+        st.error(f"Something went wrong: {e}")                               
