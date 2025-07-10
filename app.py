@@ -20,35 +20,33 @@ def load_data():
 
 def ask_gpt(user_query, df_sample):
     prompt = f"""
-    You are a data analyst. Given a dataset with these columns:
-    {', '.join(df_sample.columns)}
+You are a data analyst. Given a dataset with these columns:
+{', '.join(df_sample.columns)}
 
-    The user asked: "{user_query.lower()}"
+The user asked: "{user_query.lower()}"
 
-    Generate a Python pandas code snippet that filters and analyzes the dataset to provide:
-    1. If the user asks for 'total', 'overall', 'aggregate', or 'company-wide', show revenue and cost across the **entire dataset**.
-    2. If a client is mentioned, filter by that client (case-insensitive).
-    3. Provide:
-        - Total revenue and cost
-        - Revenue by 'Type' (Fixed_Position vs Project)
-        - Cost split by Onshore vs Offshore (Location_Onshore and Location_Offshore)
+Generate a Python pandas code snippet that filters and analyzes the dataset to provide:
+1. If the user asks for 'total', 'overall', 'aggregate', or 'company-wide', show revenue and cost across the **entire dataset**.
+2. If a client is mentioned, filter by that client (case-insensitive).
+3. Provide:
+    - Total revenue and cost
+    - Revenue by 'Type' (Fixed_Position vs Project)
+    - Cost split by Onshore vs Offshore (Location_Onshore and Location_Offshore)
 
-    Assume the dataframe is called df.
-    - Use `.str.lower()` for string comparisons
-    - Return the following variables:
-        - result → filtered df
-        - summary1 → revenue by Type
-        - summary2 → cost by Onshore/Offshore
+Assume the dataframe is called df.
+- Use `.str.lower()` for string comparisons
+- Return the following variables:
+    - result → filtered df
+    - summary1 → revenue by Type
+    - summary2 → cost by Onshore/Offshore
 
-    Just return executable Python code, no explanation.
-    """
-
+Just return executable Python code, no explanation.
+"""
     response = openai.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
         temperature=0
     )
-
     return response.choices[0].message.content
 
 def plot_bar(data, title, ylabel):
@@ -64,33 +62,28 @@ def generate_pdf(df):
     pdf.set_font("Arial", size=12)
     pdf.cell(200, 10, txt="Client-wise Summary Report", ln=True, align='C')
     pdf.ln(10)
-
     col_names = list(df.columns)
     col_width = 190 / len(col_names)
-
     for col in col_names:
         pdf.cell(col_width, 10, txt=str(col), border=1)
     pdf.ln()
-
     for _, row in df.iterrows():
         for col in col_names:
             pdf.cell(col_width, 10, txt=str(row[col]), border=1)
         pdf.ln()
-
     return pdf.output(dest='S').encode('latin1')
 
 def generate_summary(df):
     prompt = f"""
-    You are a senior business analyst. Given this client-level summary:
+You are a senior business analyst. Given this client-level summary:
 
-    {df.to_markdown(index=False)}
+{df.to_markdown(index=False)}
 
-    Write a **concise executive summary** (3-4 bullet points max) highlighting:
-    - Top clients by revenue, cost, and resources
-    - Notable trends or deviations
-    Avoid verbose or redundant phrases. Be sharp and analytical.
-    """
-
+Write a **concise executive summary** (3-4 bullet points max) highlighting:
+- Top clients by revenue, cost, and resources
+- Notable trends or deviations
+Avoid verbose or redundant phrases. Be sharp and analytical.
+"""
     response = openai.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
@@ -98,7 +91,7 @@ def generate_summary(df):
     )
     return response.choices[0].message.content.strip()
 
-# 🧠 MAIN APP
+# 🚀 Main App UI
 st.set_page_config(page_title="Cloud Insights Chatbot", page_icon="💬", layout="wide")
 st.title("💬 Cloud Insights Chatbot")
 
@@ -109,28 +102,34 @@ with st.sidebar:
     for client in sorted(df["Client"].unique()):
         st.markdown(f"- {client}")
 
-# 🟡 Start with empty input, let user say "hello"
+# Start blank and guide the user
 user_query = st.text_input("Ask a question like:", "")
 
 if user_query:
     try:
-        if user_query.lower().strip() in ["hello", "hi", "hey", "hi there", "hello there"]:
-            st.markdown("👋 Hello! I'm your Cloud Insights chatbot.")
+        greeting = user_query.lower().strip()
+        if greeting in ["hello", "hi", "hey", "hi there", "hello there"]:
+            st.markdown("👋 Hello! I'm your **Cloud Insights** chatbot.")
             st.markdown("""
-Here's what I can help you with:
+I can help you explore and analyze revenue, cost, and resource data from your software projects.
 
-- 📊 Show revenue and cost breakdowns by client, project, or time  
-- 🔎 Compare clients by revenue, cost, or resource usage  
-- 📈 Show trends over time (monthly revenue/cost)  
-- 🧾 Generate a full client report by typing **client report**
+Here are a few things I can do:
+- 📊 Breakdown revenue and cost by client or engagement type  
+- 📈 Show monthly trends for revenue and cost  
+- 🧾 Generate a full client summary report with visuals  
+- 📍 Compare metrics across clients  
+- 🧠 Summarize business insights for your leadership team  
 
-Try asking something like:
-
+Try asking:
 - `Show revenue and cost breakdown for BMW`  
-- `Give me the overall totals`  
+- `What are the overall totals for cost and revenue?`  
 - `Client report`
-            """)
-        elif "client report" in user_query.lower():
+
+👉 Once you try something, I’ll also guide you with follow-up questions!
+""")
+
+        elif "client report" in greeting:
+            # Existing full client report block unchanged
             st.subheader("📊 Client-wise Summary Table")
             summary = df.groupby("Client").agg({
                 "Revenue": "sum",
@@ -235,7 +234,6 @@ Try asking something like:
                 col1, col2 = st.columns([1.1, 1])
                 with col1:
                     st.dataframe(agg[["Type", "Revenue ($M)", "Cost ($M)", "Total Resources"]], use_container_width=True, height=350)
-
                 with col2:
                     fig, ax1 = plt.subplots(figsize=(6, 4))
                     ax2 = ax1.twinx()
@@ -264,6 +262,11 @@ Try asking something like:
 
                 st.subheader("📋 Project-wise and Fixed Position Data")
                 st.dataframe(local_vars['result'], use_container_width=True, height=400)
+
+                st.markdown("💡 _Try also asking:_")
+                st.markdown("- `Compare revenue across clients`")
+                st.markdown("- `Breakdown by project`")
+                st.markdown("- `Monthly trend for BMW`")
 
     except Exception as e:
         st.error(f"Something went wrong: {e}")
