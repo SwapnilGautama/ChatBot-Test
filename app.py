@@ -22,7 +22,7 @@ def load_data():
 
 SUPPORTED_TOPICS = [
     "client report", "revenue", "cost", "summary", "breakdown", "compare",
-    "trend", "project", "fixed position", "monthly", "overall totals", "client"
+    "trend", "project", "fixed position", "monthly", "client"
 ]
 
 def is_supported_query(query):
@@ -97,11 +97,6 @@ st.set_page_config(page_title="Cloud Insights Chatbot", page_icon="💬", layout
 st.title("💬 Cloud Insights Chatbot")
 df = load_data()
 
-with st.sidebar:
-    st.markdown("### 🗞 Clients in Dataset")
-    for client in sorted(df["Client"].unique()):
-        st.markdown(f"- {client}")
-
 user_query = st.text_input("Hi There:", "")
 
 if user_query:
@@ -114,7 +109,7 @@ I can help analyze your software company’s data around revenue, cost, and reso
 
 Try asking:
 - `Show revenue and cost breakdown for BMW`  
-- `I can provide you reveue and cost summaries for other clients we have such as Audi, Mercedes, Porche or Volkswagen as well`  
+- `I can provide you revenue and cost summaries for other clients we have such as Audi, Mercedes, Porsche or Volkswagen as well`  
 - `Client report`
 
 👉 After each question, I’ll suggest what to explore next!
@@ -122,7 +117,6 @@ Try asking:
         elif not is_supported_query(greeting):
             st.warning("⚠️ Sorry, I'm not trained to answer that kind of question yet. Try asking about revenue, cost, trends, or client reports.")
         elif "client report" in greeting:
-            # FULL client report block (unchanged)
             summary = df.groupby("Client").agg({
                 "Revenue": "sum",
                 "Cost": "sum",
@@ -173,7 +167,6 @@ Try asking:
             ax.legend()
             st.pyplot(fig)
 
-            # Download button
             pdf_bytes = generate_pdf(final[["Client", "Revenue ($M)", "Cost ($M)", "Resources_Total", "Revenue/Resource ($K)", "Cost/Resource ($K)"]])
             b64_pdf = base64.b64encode(pdf_bytes).decode()
             href = f'<a href="data:application/pdf;base64,{b64_pdf}" download="Client_Report.pdf">📄 Download PDF Report</a>'
@@ -186,8 +179,9 @@ Try asking:
             clean_code = re.sub(r"```(?:python)?", "", code).strip("`").strip()
             exec(clean_code, {}, local_vars)
 
-            if 'result' in local_vars:
-                agg = local_vars['result'].groupby("Type").agg({
+            result = local_vars.get('result')
+            if isinstance(result, pd.DataFrame):
+                agg = result.groupby("Type").agg({
                     "Revenue": "sum",
                     "Cost": "sum",
                     "Resources_Total": "sum"
@@ -208,5 +202,7 @@ Try asking:
                 st.markdown("- `Client report`")
                 st.markdown("- `Monthly trend for BMW`")
                 st.markdown("- `Breakdown by project`")
+            else:
+                st.warning("⚠️ Unable to interpret the result for this question.")
     except Exception as e:
-        st.error(f"Something went wrong: {e}")                               
+        st.error(f"Something went wrong: {e}")
