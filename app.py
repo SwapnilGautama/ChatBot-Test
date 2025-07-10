@@ -36,7 +36,7 @@ You are a data analyst. Given a dataset with these columns:
 The user asked: "{user_query.lower()}"
 
 Generate a Python pandas code snippet that filters and analyzes the dataset to provide:
-1. If the user asks for 'total', 'overall', 'aggregate', or 'company-wide', show revenue and cost across the **entire dataset**.
+1. If the user asks for 'total', 'overall' or 'aggregate', show revenue and cost across the **entire dataset**.
 2. If a client is mentioned, filter by that client (case-insensitive).
 3. Provide:
     - Total revenue and cost
@@ -102,7 +102,7 @@ with st.sidebar:
     for client in sorted(df["Client"].unique()):
         st.markdown(f"- {client}")
 
-user_query = st.text_input("Ask a question like:", "")
+user_query = st.text_input("Hi There:", "")
 
 if user_query:
     try:
@@ -114,7 +114,7 @@ I can help analyze your software company’s data around revenue, cost, and reso
 
 Try asking:
 - `Show revenue and cost breakdown for BMW`  
-- `What are the overall totals for cost and revenue?`  
+- `I can provide you reveue and cost summaries for other clients we have such as Audi, Mercedes, Porche or Volkswagen as well`  
 - `Client report`
 
 👉 After each question, I’ll suggest what to explore next!
