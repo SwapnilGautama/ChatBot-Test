@@ -1,5 +1,3 @@
-# app.py (Based on working v4, now enhanced to avoid unsupported queries)
-
 import streamlit as st
 import pandas as pd
 import openai
@@ -12,21 +10,13 @@ import re
 
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-CSV_URL = "https://raw.githubusercontent.com/SwapnilGautama/CloudInsights/main/SoftwareCompany_2025_Data.csv"
+CSV_URL = https://raw.githubusercontent.com/SwapnilGautama/CloudInsights/main/SoftwareCompany_2025_Data.csv
 
 @st.cache_data
 def load_data():
     df = pd.read_csv(CSV_URL)
     df['Month'] = pd.to_datetime(df['Month'])
     return df
-
-SUPPORTED_TOPICS = [
-    "client report", "revenue", "cost", "summary", "breakdown", "compare",
-    "trend", "project", "fixed position", "monthly", "overall totals", "client"
-]
-
-def is_supported_query(query):
-    return any(word in query.lower() for word in SUPPORTED_TOPICS)
 
 def ask_gpt(user_query, df_sample):
     prompt = f"""
@@ -44,11 +34,13 @@ Generate a Python pandas code snippet that filters and analyzes the dataset to p
     - Cost split by Onshore vs Offshore (Location_Onshore and Location_Offshore)
 
 Assume the dataframe is called df.
-Use `.str.lower()` for comparisons.
-Return only executable Python code with:
-    - result
-    - summary1
-    - summary2
+- Use `.str.lower()` for string comparisons
+- Return the following variables:
+    - result → filtered df
+    - summary1 → revenue by Type
+    - summary2 → cost by Onshore/Offshore
+
+Just return executable Python code, no explanation.
 """
     response = openai.chat.completions.create(
         model="gpt-4",
@@ -57,23 +49,12 @@ Return only executable Python code with:
     )
     return response.choices[0].message.content
 
-def generate_summary(df):
-    prompt = f"""
-You are a senior business analyst. Given this client-level summary:
-
-{df.to_markdown(index=False)}
-
-Write a concise executive summary (3-4 bullet points) highlighting:
-- Top clients by revenue, cost, and resources
-- Notable trends or deviations
-Avoid redundant or verbose phrasing.
-"""
-    response = openai.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.5
-    )
-    return response.choices[0].message.content.strip()
+def plot_bar(data, title, ylabel):
+    fig, ax = plt.subplots(figsize=(6, 4))
+    data.plot(kind="bar", ax=ax)
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    st.pyplot(fig)
 
 def generate_pdf(df):
     pdf = FPDF()
@@ -92,9 +73,28 @@ def generate_pdf(df):
         pdf.ln()
     return pdf.output(dest='S').encode('latin1')
 
-# UI Setup
+def generate_summary(df):
+    prompt = f"""
+You are a senior business analyst. Given this client-level summary:
+
+{df.to_markdown(index=False)}
+
+Write a **concise executive summary** (3-4 bullet points max) highlighting:
+- Top clients by revenue, cost, and resources
+- Notable trends or deviations
+Avoid verbose or redundant phrases. Be sharp and analytical.
+"""
+    response = openai.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.5
+    )
+    return response.choices[0].message.content.strip()
+
+# 🚀 Main App UI
 st.set_page_config(page_title="Cloud Insights Chatbot", page_icon="💬", layout="wide")
 st.title("💬 Cloud Insights Chatbot")
+
 df = load_data()
 
 with st.sidebar:
@@ -102,6 +102,7 @@ with st.sidebar:
     for client in sorted(df["Client"].unique()):
         st.markdown(f"- {client}")
 
+# Start blank and guide the user
 user_query = st.text_input("Ask a question like:", "")
 
 if user_query:
@@ -110,19 +111,26 @@ if user_query:
         if greeting in ["hello", "hi", "hey", "hi there", "hello there"]:
             st.markdown("👋 Hello! I'm your **Cloud Insights** chatbot.")
             st.markdown("""
-I can help analyze your software company’s data around revenue, cost, and resources.
+I can help you explore and analyze revenue, cost, and resource data from your software projects.
+
+Here are a few things I can do:
+- 📊 Breakdown revenue and cost by client or engagement type  
+- 📈 Show monthly trends for revenue and cost  
+- 🧾 Generate a full client summary report with visuals  
+- 📍 Compare metrics across clients  
+- 🧠 Summarize business insights for your leadership team  
 
 Try asking:
 - `Show revenue and cost breakdown for BMW`  
 - `What are the overall totals for cost and revenue?`  
 - `Client report`
 
-👉 After each question, I’ll suggest what to explore next!
+👉 Once you try something, I’ll also guide you with follow-up questions!
 """)
-        elif not is_supported_query(greeting):
-            st.warning("⚠️ Sorry, I'm not trained to answer that kind of question yet. Try asking about revenue, cost, trends, or client reports.")
+
         elif "client report" in greeting:
-            # FULL client report block (unchanged)
+            # Existing full client report block unchanged
+            st.subheader("📊 Client-wise Summary Table")
             summary = df.groupby("Client").agg({
                 "Revenue": "sum",
                 "Cost": "sum",
@@ -146,34 +154,55 @@ Try asking:
             })
 
             final = pd.concat([summary, total_row], ignore_index=True)
-            st.subheader("📊 Client-wise Summary Table")
-            st.dataframe(final)
 
-            with st.expander("🧠 AI-Generated Summary", expanded=True):
+            with st.expander("🧠 AI-Generated Business Summary", expanded=True):
                 st.markdown(generate_summary(final[["Client", "Revenue ($M)", "Cost ($M)", "Resources_Total"]]))
 
-            st.subheader("🔹 Revenue, Cost, Resource by Client")
+            st.dataframe(final[["Client", "Revenue ($M)", "Cost ($M)", "Resources_Total", "Revenue/Resource ($K)", "Cost/Resource ($K)"]], use_container_width=True)
+
             pie_cols = ["Revenue", "Cost", "Resources_Total"]
-            labels = summary["Client"]
-            cols = st.columns(3)
-            for i, metric in enumerate(pie_cols):
+            labels = final["Client"][:-1]
+            figs = []
+            for metric in pie_cols:
                 fig, ax = plt.subplots()
                 ax.pie(summary[metric], labels=labels, autopct='%1.1f%%')
                 ax.set_title(f"{metric} by Client")
-                cols[i].pyplot(fig)
+                figs.append(fig)
 
-            st.subheader("📈 Monthly Revenue Trend")
+            st.subheader("🔹 Distribution by Client")
+            col1, col2, col3 = st.columns(3)
+            col1.pyplot(figs[0])
+            col2.pyplot(figs[1])
+            col3.pyplot(figs[2])
+
+            st.markdown("### 📊 Monthly Revenue Trend by Client")
             df["Month_Parsed"] = pd.to_datetime(df["Month"])
-            monthly = df.groupby(["Client", "Month_Parsed"])["Revenue"].sum().reset_index()
+            monthly_group = df.groupby(["Client", "Month_Parsed"])["Revenue"].sum().reset_index()
+
             fig, ax = plt.subplots(figsize=(10, 5))
-            for client in monthly["Client"].unique():
-                data = monthly[monthly["Client"] == client]
-                ax.plot(data["Month_Parsed"], data["Revenue"], label=client, marker="o")
-            ax.set_title("Revenue by Client")
-            ax.legend()
+            clients = monthly_group["Client"].unique()
+            colors = plt.cm.tab10.colors
+
+            for idx, client in enumerate(clients):
+                client_data = monthly_group[monthly_group["Client"] == client]
+                ax.plot(
+                    client_data["Month_Parsed"],
+                    client_data["Revenue"],
+                    label=client,
+                    linewidth=2.5,
+                    marker="o",
+                    markersize=5,
+                    color=colors[idx % len(colors)],
+                )
+
+            ax.set_title("Revenue by Client (Monthly)", fontsize=14, fontweight="bold", pad=10)
+            ax.set_xlabel("Month", fontsize=12)
+            ax.set_ylabel("Revenue ($)", fontsize=12)
+            ax.grid(True, which="major", linestyle="--", linewidth=0.5, alpha=0.6)
+            ax.legend(title="Client", fontsize=9, title_fontsize=10, loc="upper right")
+            plt.xticks(rotation=45)
             st.pyplot(fig)
 
-            # Download button
             pdf_bytes = generate_pdf(final[["Client", "Revenue ($M)", "Cost ($M)", "Resources_Total", "Revenue/Resource ($K)", "Cost/Resource ($K)"]])
             b64_pdf = base64.b64encode(pdf_bytes).decode()
             href = f'<a href="data:application/pdf;base64,{b64_pdf}" download="Client_Report.pdf">📄 Download PDF Report</a>'
@@ -199,14 +228,45 @@ Try asking:
 
                 st.subheader("📌 Key Insights Summary")
                 for _, row in agg.iterrows():
-                    st.markdown(f"- **${row['Revenue ($M)']}M revenue vs ${row['Cost ($M)']}M cost for `{row['Type']}`**")
+                    st.markdown(f"- **The total revenue is ${row['Revenue ($M)']}M and total cost is ${row['Cost ($M)']}M for `{row['Type']}` engagements.**")
 
                 st.subheader("📊 Summary by Type (Aggregated)")
-                st.dataframe(agg[["Type", "Revenue ($M)", "Cost ($M)", "Total Resources"]], use_container_width=True)
+                col1, col2 = st.columns([1.1, 1])
+                with col1:
+                    st.dataframe(agg[["Type", "Revenue ($M)", "Cost ($M)", "Total Resources"]], use_container_width=True, height=350)
+                with col2:
+                    fig, ax1 = plt.subplots(figsize=(6, 4))
+                    ax2 = ax1.twinx()
+                    ax1.bar(agg["Type"], agg["Revenue ($M)"], label="Revenue ($M)", color="skyblue")
+                    ax2.plot(agg["Type"], agg["Cost ($M)"], label="Cost ($M)", color="red", marker="o")
+                    ax1.set_ylabel("Revenue ($M)")
+                    ax2.set_ylabel("Cost ($M)")
+                    ax1.set_title("Revenue and Cost by Type")
+                    ax1.legend(loc="upper left")
+                    ax2.legend(loc="upper right")
+                    st.pyplot(fig)
 
-                st.subheader("💡 Try also asking:")
-                st.markdown("- `Client report`")
-                st.markdown("- `Monthly trend for BMW`")
+                st.subheader("📈 Monthly Revenue vs Cost Trend")
+                monthly = local_vars['result'].groupby("Month").agg({"Revenue": "sum", "Cost": "sum"}).sort_index()
+                fig, ax1 = plt.subplots(figsize=(8, 4))
+                ax2 = ax1.twinx()
+                ax1.bar(monthly.index.strftime("%b %Y"), monthly["Revenue"] / 1_000_000, label="Revenue ($M)", color="lightgreen")
+                ax2.plot(monthly.index.strftime("%b %Y"), monthly["Cost"] / 1_000_000, label="Cost ($M)", color="orange", marker="o")
+                ax1.set_ylabel("Revenue ($M)")
+                ax2.set_ylabel("Cost ($M)")
+                ax1.set_title("Monthly Revenue vs Cost")
+                ax1.set_xticklabels(monthly.index.strftime("%b %Y"), rotation=45)
+                ax1.legend(loc="upper left")
+                ax2.legend(loc="upper right")
+                st.pyplot(fig)
+
+                st.subheader("📋 Project-wise and Fixed Position Data")
+                st.dataframe(local_vars['result'], use_container_width=True, height=400)
+
+                st.markdown("💡 _Try also asking:_")
+                st.markdown("- `Compare revenue across clients`")
                 st.markdown("- `Breakdown by project`")
+                st.markdown("- `Monthly trend for BMW`")
+
     except Exception as e:
-        st.error(f"Something went wrong: {e}")                               
+        st.error(f"Something went wrong: {e}")
