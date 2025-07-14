@@ -156,7 +156,7 @@ I work with data across multiple clients including:
             latest["Revenue ($M)"] = (latest["Revenue"] / 1_000_000).round(2)
             latest["Cost ($M)"] = (latest["Cost"] / 1_000_000).round(2)
             st.dataframe(latest[["Type", "Revenue ($M)", "Cost ($M)", "Resources_Total"]], use_container_width=True)
-elif "client report" in greeting:
+            elif "client report" in greeting:
             st.subheader("📊 Client-wise Summary Table")
             summary = df.groupby("Client").agg({
                 "Revenue": "sum",
