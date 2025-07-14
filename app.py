@@ -112,11 +112,52 @@ I work with data across multiple clients including:
 ### ✅ You can ask me:
 - `Show revenue and cost breakdown for BMW`  
 - `Client report`  
-- `Compare revenue across clients`  
+- `Compare revenue across clients`
+- 'Analysis by enegagement type'
 
 👉 Ask a question to get started, and I’ll also guide you with follow-up questions!
 """)
 
+        elif "compare revenue and cost by type" in greeting:
+            st.subheader("📊 Type-wise Comparison (Fixed_Position vs Project)")
+
+            df["Month_Parsed"] = pd.to_datetime(df["Month"])
+            grouped = df.groupby(["Type", "Month_Parsed"]).agg({
+                "Revenue": "sum",
+                "Cost": "sum",
+                "Resources_Total": "sum"
+            }).reset_index()
+
+            st.markdown("### 💼 Revenue & Cost Trends by Type")
+            types = grouped["Type"].unique()
+            colors = plt.cm.Set2.colors
+            fig, ax = plt.subplots(figsize=(10, 5))
+
+            for idx, t in enumerate(types):
+                sub = grouped[grouped["Type"] == t]
+                ax.plot(sub["Month_Parsed"], sub["Revenue"], label=f"{t} Revenue", linewidth=2, marker="o", color=colors[idx])
+                ax.plot(sub["Month_Parsed"], sub["Cost"], linestyle="--", label=f"{t} Cost", linewidth=2, marker="x", color=colors[idx])
+
+            ax.set_title("Revenue and Cost by Type over Time", fontsize=14)
+            ax.set_xlabel("Month")
+            ax.set_ylabel("Amount ($)")
+            ax.legend()
+            ax.grid(True, linestyle="--", alpha=0.5)
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+
+            st.markdown("### 📋 Table Summary")
+            latest = df.groupby("Type").agg({
+                "Revenue": "sum",
+                "Cost": "sum",
+                "Resources_Total": "sum"
+            }).reset_index()
+
+            latest["Revenue ($M)"] = (latest["Revenue"] / 1_000_000).round(2)
+            latest["Cost ($M)"] = (latest["Cost"] / 1_000_000).round(2)
+            st.dataframe(latest[["Type", "Revenue ($M)", "Cost ($M)", "Resources_Total"]], use_container_width=True)
+
+        
         elif "client report" in greeting:
             st.subheader("📊 Client-wise Summary Table")
             summary = df.groupby("Client").agg({
